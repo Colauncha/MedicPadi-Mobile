@@ -1,0 +1,344 @@
+import * as SecureStore from 'expo-secure-store';
+
+const BASE_URL = 'https://api.medicpadi.com/api';
+const TOKEN_KEY = 'mp_token';
+const USER_KEY = 'mp_user';
+
+// ── Token / user storage ──────────────────────────────────────────────────────
+
+export const storeToken = (token: string) => SecureStore.setItemAsync(TOKEN_KEY, token);
+export const getStoredToken = () => SecureStore.getItemAsync(TOKEN_KEY);
+export const clearStoredToken = () => SecureStore.deleteItemAsync(TOKEN_KEY);
+
+export const storeUser = (user: AuthUser | null) => {
+  if (!user) return SecureStore.deleteItemAsync(USER_KEY);
+  return SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
+};
+export const getStoredUser = async (): Promise<AuthUser | null> => {
+  const val = await SecureStore.getItemAsync(USER_KEY);
+  return val ? JSON.parse(val) : null;
+};
+
+export const clearStoredUser = () => SecureStore.deleteItemAsync(USER_KEY);
+
+// ── HTTP helper ───────────────────────────────────────────────────────────────
+
+function toQS(params: Record<string, string | number>): string {
+  const pairs = Object.entries(params)
+    .filter(([, v]) => v != null && v !== '')
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`);
+  return pairs.length ? `?${pairs.join('&')}` : '';
+}
+
+async function request<T>(
+  method: string,
+  path: string,
+  body?: unknown,
+  token?: string | null,
+): Promise<T> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method,
+    headers,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    const msg = data?.message ?? `HTTP ${res.status}`;
+    throw new Error(Array.isArray(msg) ? msg.join(', ') : String(msg));
+  }
+
+  return data as T;
+}
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  role: string;
+  fullName?: string;
+}
+
+export interface LoginResponse {
+  token: {access_token: string};
+  message: string;
+  user?: AuthUser;
+}
+
+export interface RegisterData {
+  email: string;
+  password: string;
+  role: string;
+  phoneNumber: string;
+  fullName: string;
+}
+
+export interface NextOfKin {
+  name?: string;
+  phone?: string;
+  email?: string;
+  relationship?: string;
+}
+
+// Flat profile fields — used when profiles are embedded in lists / appointments
+export interface ProfileFields {
+  id?: string;
+  user_id?: string;
+  // Patient fields
+  firstName?: string;
+  lastName?: string;
+  phoneNumber?: string;
+  gender?: string;
+  bloodGroup?: string;
+  genotype?: string;
+  allergies?: string[];
+  emergencyContact?: string;
+  nextOfKin?: NextOfKin;
+  profilePicture?: {public_id: string; url: string};
+  // Doctor-specific
+  speciality?: string;
+  licenceNumber?: string;
+  bio?: string;
+  rating?: number;
+  // Pharmacy / Lab
+  name?: string;
+  registrationNumber?: string;
+  address?: string;
+  isProfileComplete?: boolean;
+}
+
+// Shape returned by GET /profile/retrieve
+export interface ProfileData {
+  profile: ProfileFields;
+  rest?: AuthUser;
+}
+
+// Payload accepted by PATCH /profile
+export type ProfileUpdateData = Partial<ProfileFields>;
+
+export interface AppointmentData {
+  id: string;
+  provider_id: string;
+  patient_id: string;
+  appointment_time: string;
+  description?: string;
+  meeting_link?: string;
+  sessionCost?: number;
+  sessions?: number;
+  status: string;
+  provider?: ProfileFields;
+  patient?: ProfileFields;
+  createdAt?: string;
+}
+
+export interface DrugData {
+  id: string;
+  name: string;
+  description?: string;
+  price: number;
+  available?: boolean;
+  requiresPrescription?: boolean;
+  dosage?: string;
+  composition?: string;
+  imageUrl?: string;
+  category?: { id: string; name: string };
+}
+
+export interface LabTestData {
+  id: string;
+  name: string;
+  shortName?: string;
+  description?: string;
+  price: number;
+  available?: boolean;
+  TAT?: string;
+  department?: { id: string; name: string };
+  lab?: ProfileFields;
+  lab_id?: string;
+}
+
+export interface EHRRecord {
+  id: string;
+  patient_id: string;
+  provider_id: string;
+  diagnosis?: string;
+  prescription?: string;
+  notes?: string;
+  createdAt: string;
+  provider?: ProfileFields;
+}
+
+export interface Paginated<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+
+export const apiRegister = (data: RegisterData) =>
+  request<AuthUser>('POST', '/auth', data);
+
+export const apiLogin = (email: string, password: string) =>
+  request<LoginResponse>('POST', '/auth/login', { email, password });
+
+export const apiLogout = (token: string) =>
+  request<void>('GET', '/auth/logout', undefined, token);
+
+export const apiRequestPasswordReset = (email: string) =>
+  request<void>('POST', '/auth/request-password-reset', { email });
+
+// ── Profile ───────────────────────────────────────────────────────────────────
+
+export const apiGetProfile = (token: string) =>
+  request<ProfileData>('GET', '/profile/retrieve', undefined, token);
+
+export const apiCreateProfile = (data: Record<string, unknown>, token: string) =>
+  request<ProfileData>('POST', '/profile', data, token);
+
+export const apiUpdateProfile = (data: ProfileUpdateData, token: string) =>
+  request<ProfileData>('PATCH', '/profile', data, token);
+
+export const apiUploadProfilePicture = async (
+  imageUri: string,
+  token: string,
+): Promise<ProfileData> => {
+  const filename = imageUri.split('/').pop() ?? 'photo.jpg';
+  const match = /\.(\w+)$/.exec(filename);
+  const type = match ? `image/${match[1]}` : 'image/jpeg';
+
+  const formData = new FormData();
+  formData.append('profilePicture', { uri: imageUri, name: filename, type } as any);
+
+  const res = await fetch(`${BASE_URL}/profile`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const msg = data?.message ?? `HTTP ${res.status}`;
+    throw new Error(Array.isArray(msg) ? msg.join(', ') : String(msg));
+  }
+  return data as ProfileData;
+};
+
+export const apiListProfiles = (
+  params: Record<string, string | number> = {},
+  token: string,
+) =>
+  request<Paginated<ProfileFields>>(
+    'GET',
+    `/profile${toQS(params)}`,
+    undefined,
+    token,
+  );
+
+// ── Appointments ──────────────────────────────────────────────────────────────
+
+export const apiGetAppointments = (
+  params: Record<string, string | number> = {},
+  token: string,
+) =>
+  request<Paginated<AppointmentData>>(
+    'GET',
+    `/orders/appointments${toQS(params)}`,
+    undefined,
+    token,
+  );
+
+export const apiBookAppointment = (
+  data: {
+    provider_id: string;
+    appointment_time: string;
+    description?: string;
+    meeting_link?: string;
+    sessionCost?: number;
+    sessions?: number;
+  },
+  token: string,
+) => request<AppointmentData>('POST', '/orders/appointments', data, token);
+
+export const apiUpdateAppointment = (
+  id: string,
+  data: Partial<AppointmentData>,
+  token: string,
+) =>
+  request<AppointmentData>('PATCH', `/orders/appointments/${id}`, data, token);
+
+export const apiCancelAppointment = (id: string, token: string) =>
+  request<void>('DELETE', `/orders/appointments/${id}`, undefined, token);
+
+// ── Pharmacy Drugs ────────────────────────────────────────────────────────────
+
+export const apiGetDrugs = (
+  params: Record<string, string | number> = {},
+  token: string,
+) =>
+  request<Paginated<DrugData>>(
+    'GET',
+    `/services/pharmacy/drugs${toQS(params)}`,
+    undefined,
+    token,
+  );
+
+export const apiGetDrugById = (id: string, token: string) =>
+  request<DrugData>('GET', `/services/pharmacy/drugs/${id}`, undefined, token);
+
+// ── Lab Tests ─────────────────────────────────────────────────────────────────
+
+export const apiGetLabTests = (
+  params: Record<string, string | number> = {},
+  token: string,
+) =>
+  request<Paginated<LabTestData>>(
+    'GET',
+    `/services/lab/tests${toQS(params)}`,
+    undefined,
+    token,
+  );
+
+// ── EHR Records ───────────────────────────────────────────────────────────────
+
+export const apiGetEHRRecords = (
+  params: Record<string, string | number> = {},
+  token: string,
+) =>
+  request<Paginated<EHRRecord>>(
+    'GET',
+    `/ehr/records${toQS(params)}`,
+    undefined,
+    token,
+  );
+
+// ── Test Requisitions ─────────────────────────────────────────────────────────
+
+export const apiGetTestRequisitions = (
+  params: Record<string, string | number> = {},
+  token: string,
+) =>
+  request<Paginated<Record<string, unknown>>>(
+    'GET',
+    `/orders/test-requisitions${toQS(params)}`,
+    undefined,
+    token,
+  );
+
+// ── Drug Requisitions ─────────────────────────────────────────────────────────
+
+export const apiCreateDrugRequisition = (
+  data: {
+    pharmacy_id: string;
+    items: { drug_id: string; quantity: number }[];
+    delivery_address?: string;
+    notes?: string;
+  },
+  token: string,
+) => request<unknown>('POST', '/orders/drug-requisitions', data, token);
