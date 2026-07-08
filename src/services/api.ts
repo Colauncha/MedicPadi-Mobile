@@ -1,6 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 
 const BASE_URL = 'https://api.medicpadi.com/api';
+// const BASE_URL = 'http://localhost:3000/api';
 const TOKEN_KEY = 'mp_token';
 const USER_KEY = 'mp_user';
 
@@ -20,6 +21,11 @@ export const getStoredUser = async (): Promise<AuthUser | null> => {
 };
 
 export const clearStoredUser = () => SecureStore.deleteItemAsync(USER_KEY);
+
+// ── Unauthorized callback (registered by AuthContext) ─────────────────────────
+
+let _onUnauthorized: (() => void) | null = null;
+export const setUnauthorizedHandler = (cb: () => void) => { _onUnauthorized = cb; };
 
 // ── HTTP helper ───────────────────────────────────────────────────────────────
 
@@ -48,6 +54,7 @@ async function request<T>(
   const data = await res.json().catch(() => null);
 
   if (!res.ok) {
+    if (res.status === 401) _onUnauthorized?.();
     const msg = data?.message ?? `HTTP ${res.status}`;
     throw new Error(Array.isArray(msg) ? msg.join(', ') : String(msg));
   }
@@ -62,6 +69,8 @@ export interface AuthUser {
   email: string;
   role: string;
   fullName?: string;
+  isEmailVerified?: boolean;
+  isVerified?: boolean;
 }
 
 export interface LoginResponse {
@@ -85,6 +94,25 @@ export interface NextOfKin {
   relationship?: string;
 }
 
+export interface DoctorEducation {
+  institution?: string;
+  degree?: string;
+  year?: string | number;
+}
+
+type BusinessHoursDay = { start: number | 'closed'; end: number | 'closed' };
+
+export interface BusinessHours {
+  id?: string;
+  monday?: BusinessHoursDay;
+  tuesday?: BusinessHoursDay;
+  wednesday?: BusinessHoursDay;
+  thursday?: BusinessHoursDay;
+  friday?: BusinessHoursDay;
+  saturday?: BusinessHoursDay;
+  sunday?: BusinessHoursDay;
+}
+
 // Flat profile fields — used when profiles are embedded in lists / appointments
 export interface ProfileFields {
   id?: string;
@@ -94,6 +122,9 @@ export interface ProfileFields {
   lastName?: string;
   phoneNumber?: string;
   gender?: string;
+  dateOfBirth?: string;
+  height?: string;
+  weight?: string;
   bloodGroup?: string;
   genotype?: string;
   allergies?: string[];
@@ -105,6 +136,13 @@ export interface ProfileFields {
   licenceNumber?: string;
   bio?: string;
   rating?: number;
+  costPerSession?: string;
+  sessionLength?: number;
+  placeOfWork?: string;
+  yearsOfService?: number;
+  awards?: string | null;
+  education?: DoctorEducation[];
+  businessHours?: BusinessHours;
   // Pharmacy / Lab
   name?: string;
   registrationNumber?: string;
@@ -175,9 +213,8 @@ export interface EHRRecord {
 
 export interface Paginated<T> {
   data: T[];
-  total: number;
-  page: number;
-  limit: number;
+  links: {first: string, last: string, next: string, previous: string}; 
+  meta: {count: number, limit: number, page: number, total: number, total_pages: number}
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
@@ -193,6 +230,12 @@ export const apiLogout = (token: string) =>
 
 export const apiRequestPasswordReset = (email: string) =>
   request<void>('POST', '/auth/request-password-reset', { email });
+
+export const apiSendVerificationEmail = (token: string) =>
+  request<void>('POST', '/auth/send-verification-mail', undefined, token);
+
+export const apiVerifyEmail = (id: string, otp: string, token: string) =>
+  request<void>('GET', `/auth/verify-email?id=${encodeURIComponent(id)}&token=${encodeURIComponent(otp)}`, undefined, token);
 
 // ── Profile ───────────────────────────────────────────────────────────────────
 
@@ -229,6 +272,13 @@ export const apiUploadProfilePicture = async (
   }
   return data as ProfileData;
 };
+
+export const apiGetProfileById = (
+  id: string,
+  role: 'consultant' | 'lab' | 'pharmacy' | 'patient',
+  token: string,
+) =>
+  request<ProfileData>('GET', `/profile/${id}?role=${role}`, undefined, token);
 
 export const apiListProfiles = (
   params: Record<string, string | number> = {},
@@ -275,6 +325,9 @@ export const apiUpdateAppointment = (
 
 export const apiCancelAppointment = (id: string, token: string) =>
   request<void>('DELETE', `/orders/appointments/${id}`, undefined, token);
+
+export const apiGetDoctorAppointments = (doctorId: string, token: string) =>
+  request<{ data: AppointmentData[] }>('GET', `/orders/appointment?id=${doctorId}`, undefined, token);
 
 // ── Pharmacy Drugs ────────────────────────────────────────────────────────────
 

@@ -24,6 +24,9 @@ export type PatientStackParamList = {
   Notifications: undefined;
   DoctorDetails: { doctorId?: string };
   EditProfile: undefined;
+  VerifyEmail: undefined;
+  Speciality: undefined;
+  DoctorsBySpeciality: { speciality: string; label: string };
 };
 
 export type RootStackParamList = {

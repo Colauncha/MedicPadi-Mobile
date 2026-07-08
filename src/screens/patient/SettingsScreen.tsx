@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Switch,
   Image,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -24,7 +25,7 @@ export const SettingsScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const [notifications, setNotifications] = React.useState(true);
   const [biometrics, setBiometrics] = React.useState(false);
-  const { profile } = useAuth()
+  const { profile, logout } = useAuth()
 
   const rows: Array<{
     icon: IconName;
@@ -42,6 +43,19 @@ export const SettingsScreen: React.FC = () => {
     { icon: 'description', label: 'Terms & Conditions', onPress: () => {} },
     { icon: 'star-outline', label: 'Rate the App', onPress: () => {} },
   ];
+
+  const handleLogout = () => {
+    Alert.alert('Log Out', 'Are you sure you want to log out?', [
+      { text: 'Cancel' },
+      {
+        text: 'Log Out',
+        style: 'destructive',
+        onPress: async () => {
+          await logout();
+        },
+      },
+    ]);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -82,7 +96,7 @@ export const SettingsScreen: React.FC = () => {
             )}
           </TouchableOpacity>
         ))}
-        <TouchableOpacity style={styles.logoutRow}>
+        <TouchableOpacity style={styles.logoutRow} onPress={handleLogout}>
           <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>
       </ScrollView>

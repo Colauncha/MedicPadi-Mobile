@@ -22,9 +22,13 @@ import {
   AppointmentData,
   apiListProfiles,
   apiGetAppointments,
+  apiGetProfileById,
+  ProfileData,
 } from '../../services/api';
+import { AvatarFromString } from '../../utils';
 
 const MedicPadiIcon = require('../../../assets/Medicpadi_logo.png');
+const QuickImage = require('../../../assets/images/DashboardRectQuickActions.png')
 
 type Nav = NativeStackNavigationProp<PatientStackParamList>;
 
@@ -35,6 +39,7 @@ interface DashStats {
   pastAppointments: number;
 }
 
+let emailVerificationAlertShown = false;
 let profileCompletionAlertShown = false;
 
 const formatApptTime = (iso: string) => {
@@ -57,14 +62,31 @@ export const DashboardScreen: React.FC = () => {
   const { token, profile, user } = useAuth();
 
   const [doctors, setDoctors] = useState<ProfileFields[]>([]);
+  const [pharma, setPharma] = useState<ProfileFields[]>([]);
+  const [labs, setLabs] = useState<ProfileFields[]>([]);
   const [upcomingAppt, setUpcomingAppt] = useState<AppointmentData | null>(null);
+  const [upcomingApptDoc, setUpcomingApptDoc] = useState<ProfileData | null>(null);
   const [recentAppts, setRecentAppts] = useState<AppointmentData[]>([]);
   const [stats, setStats] = useState<DashStats>({ doctors: 0, pharmacies: 0, labs: 0, pastAppointments: 0 });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    if (!profileCompletionAlertShown && profile && profile.profile?.isProfileComplete === false) {
+    if (!profile) return;
+    const isVerified = profile.rest?.isEmailVerified;
+    const isComplete = profile.profile?.isProfileComplete;
+
+    if (!emailVerificationAlertShown && isVerified === false) {
+      emailVerificationAlertShown = true;
+      Alert.alert(
+        'Verify Your Email',
+        'Please verify your email address to access all features.',
+        [
+          { text: 'Later', style: 'cancel' },
+          { text: 'Verify Now', onPress: () => navigation.navigate('VerifyEmail') },
+        ],
+      );
+    } else if (!profileCompletionAlertShown && isComplete === false) {
       profileCompletionAlertShown = true;
       Alert.alert(
         'Complete Your Profile',
@@ -84,37 +106,64 @@ export const DashboardScreen: React.FC = () => {
     ? `${resolvedUser.fullName.split(' ')[0]},`
     : 'there,';
 
+  const providerData = useCallback(async (providerId: string, role: 'consultant' | 'pharmacy' | 'lab' = 'consultant', setProvider?: (provider: ProfileData | null) => void) => {
+    if (!token) return null;
+    try {
+      const provider = await apiGetProfileById(providerId, role, token);
+      if (setProvider) {
+        setProvider(provider);
+      }
+      return provider;
+    } catch (error) {
+      console.error('Error fetching provider data:', error);
+      return null;
+
+    }
+  }, [token]);
+
   const loadData = useCallback(async () => {
     if (!token) return;
     try {
-      const [doctorsRes, pharmaRes, labRes, upcomingRes, pastRes] = await Promise.allSettled([
+      const [doctorsRes, pharmaRes, labRes, pendingRes, confirmedRes, pastRes] = await Promise.allSettled([
         apiListProfiles({ role: 'consultant', limit: 10 }, token),
-        apiListProfiles({ role: 'pharmacy', limit: 1 }, token),
-        apiListProfiles({ role: 'lab', limit: 1 }, token),
-        apiGetAppointments({ status: 'pending,confirmed', limit: 5 }, token),
+        apiListProfiles({ role: 'pharmacy', limit: 10 }, token),
+        apiListProfiles({ role: 'lab', limit: 10 }, token),
+        apiGetAppointments({ status: 'pending', limit: 5 }, token),
+        apiGetAppointments({ status: 'confirmed', limit: 5 }, token),
         apiGetAppointments({ status: 'completed', limit: 5 }, token),
       ]);
 
       if (doctorsRes.status === 'fulfilled') {
         const items = Array.isArray(doctorsRes.value.data) ? doctorsRes.value.data : [];
         setDoctors(items);
-        setStats((s) => ({ ...s, doctors: doctorsRes.value.total ?? items.length }));
+        setStats((s) => ({ ...s, doctors: doctorsRes.value.meta.total ?? items.length }));
       }
       if (pharmaRes.status === 'fulfilled') {
-        setStats((s) => ({ ...s, pharmacies: pharmaRes.value.total ?? 0 }));
+        const items = Array.isArray(pharmaRes.value.data) ? pharmaRes.value.data : [];
+        setPharma(items);
+        setStats((s) => ({ ...s, pharmacies: pharmaRes.value.meta.total ?? 0 }));
       }
       if (labRes.status === 'fulfilled') {
-        setStats((s) => ({ ...s, labs: labRes.value.total ?? 0 }));
+        const items = Array.isArray(labRes.value.data) ? labRes.value.data : [];
+        setLabs(items);
+        setStats((s) => ({ ...s, labs: labRes.value.meta.total ?? 0 }));
       }
-      if (upcomingRes.status === 'fulfilled') {
-        const items = Array.isArray(upcomingRes.value.data) ? upcomingRes.value.data : [];
-        setUpcomingAppt(items[0] ?? null);
-      }
+      const pendingAppointments =
+        pendingRes.status === 'fulfilled' && Array.isArray(pendingRes.value.data)
+          ? pendingRes.value.data
+          : [];
+      const confirmedAppointments =
+        confirmedRes.status === 'fulfilled' && Array.isArray(confirmedRes.value.data)
+          ? confirmedRes.value.data
+          : [];
+
       if (pastRes.status === 'fulfilled') {
         const items = Array.isArray(pastRes.value.data) ? pastRes.value.data : [];
         setRecentAppts(items.slice(0, 2));
-        setStats((s) => ({ ...s, pastAppointments: pastRes.value.total ?? 0 }));
+        setStats((s) => ({ ...s, pastAppointments: pastRes.value.meta.total ?? 0 }));
       }
+      setUpcomingAppt([...pendingAppointments, ...confirmedAppointments][0])
+
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -123,7 +172,8 @@ export const DashboardScreen: React.FC = () => {
 
   useEffect(() => {
     loadData();
-  }, [loadData]);
+      providerData(upcomingAppt?.provider_id ?? '', 'consultant', setUpcomingApptDoc);
+  }, [loadData, providerData, upcomingAppt?.provider_id]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -131,19 +181,19 @@ export const DashboardScreen: React.FC = () => {
   };
 
   const statCards = [
-    { value: String(stats.doctors), label: 'Available Doctors' },
-    { value: String(stats.pharmacies), label: 'Available Pharmacy' },
-    { value: String(stats.labs), label: 'Available Laboratories' },
-    { value: String(stats.pastAppointments), label: 'Past Appointment' },
+    { value: String(stats.doctors), label: 'Available Doctors', to: 'Speciality' },
+    { value: String(stats.pharmacies), label: 'Available Pharmacy', to: 'PharmacyScreen' },
+    { value: String(stats.labs), label: 'Available Laboratories', to: 'Laboratory' },
+    { value: String(stats.pastAppointments), label: 'Past Appointment', to: 'Appointments' },
   ];
 
-  const providerName = (appt: AppointmentData) => {
-    if (appt.provider?.firstName) return `Dr. ${appt.provider.firstName} ${appt.provider.lastName ?? ''}`.trim();
+  const providerName = (appt: ProfileData | null) => {
+    if (appt?.profile?.firstName) return `Dr. ${appt.profile.firstName} ${appt.profile.lastName ?? ''}`.trim();
     return 'Doctor';
   };
 
-  const providerSpecialty = (appt: AppointmentData) =>
-    appt.provider?.speciality ?? '';
+  const providerSpecialty = (appt: ProfileData | null) =>
+    appt?.profile?.speciality ?? '';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -162,7 +212,7 @@ export const DashboardScreen: React.FC = () => {
                 style={styles.iconBtn}
                 onPress={() => navigation.navigate('Notifications')}
               >
-                <MaterialIcons name="notifications" size={22} color={colors.text.dark} />
+                <MaterialIcons name="notifications" size={22} color={colors.text.medium} />
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.iconBtn}
@@ -187,13 +237,18 @@ export const DashboardScreen: React.FC = () => {
           <View style={styles.statsGrid}>
             {statCards.map((stat) => (
               <View key={stat.label} style={styles.statCard}>
-                <View style={styles.statArrow}>
-                  <MaterialIcons name="arrow-forward" size={12} color={colors.primary[950]} />
-                </View>
-                <View>
-                  <Text style={styles.statValue}>{loading ? '—' : stat.value}</Text>
-                  <Text style={styles.statLabel}>{stat.label}</Text>
-                </View>
+                <TouchableOpacity
+                  style={styles.statTouch}
+                  onPress={() => navigation.navigate(stat.to as any)}
+                >
+                  <View style={styles.statArrow}>
+                    <MaterialIcons name="arrow-forward" size={12} color={colors.primary[950]} />
+                  </View>
+                  <View>
+                    <Text style={styles.statValue}>{loading ? '—' : stat.value}</Text>
+                    <Text style={styles.statLabel}>{stat.label}</Text>
+                  </View>
+                </TouchableOpacity>
               </View>
             ))}
           </View>
@@ -208,8 +263,13 @@ export const DashboardScreen: React.FC = () => {
               onPress={() => navigation.navigate('Appointment' as any)}
             >
               <View style={styles.quickTop}>
-                <Text style={styles.quickCardLabel}>My Appointment</Text>
-                <MaterialIcons name="calendar-today" size={20} color={colors.text.primary} />
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <MaterialIcons name="calendar-today" size={20} color={colors.text.medium} />
+                  <Text style={styles.quickCardLabel}>Appointment</Text>
+                </View>
+                <View>
+                  <Image source={QuickImage} style={styles.quickImage} />
+                </View>
               </View>
               <View style={styles.quickBtn}>
                 <Text style={styles.quickBtnText}>Book</Text>
@@ -222,8 +282,13 @@ export const DashboardScreen: React.FC = () => {
               onPress={() => navigation.navigate('MedicalHistory')}
             >
               <View style={styles.quickTop}>
-                <Text style={styles.quickCardLabel}>Medical Reports</Text>
-                <MaterialIcons name="assignment" size={20} color={colors.text.primary} />
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <MaterialIcons name="assignment" size={20} color={colors.text.medium} />
+                  <Text style={styles.quickCardLabel}>Reports</Text>
+                </View>
+                <View>
+                  <Image source={QuickImage} style={styles.quickImage} />
+                </View>
               </View>
               <View style={styles.quickBtn}>
                 <Text style={styles.quickBtnText}>View</Text>
@@ -247,14 +312,21 @@ export const DashboardScreen: React.FC = () => {
               <View style={styles.apptCard}>
                 <View style={styles.apptDoctorRow}>
                   <View style={styles.apptDocInfo}>
-                    <View style={styles.apptAvatar} />
+                    {!upcomingApptDoc?.profile ? (
+                      <View style={styles.apptAvatar}>
+                        </View> ) :
+                        <Image
+                          source={{ uri: upcomingApptDoc?.profile?.profilePicture?.url }}
+                          style={styles.apptImg}
+                        />
+                    }
                     <View>
-                      <Text style={styles.apptDocName}>{providerName(upcomingAppt)}</Text>
-                      <Text style={styles.apptDocSpec}>{providerSpecialty(upcomingAppt)}</Text>
+                      <Text style={styles.apptDocName}>{providerName(upcomingApptDoc)}</Text>
+                      <Text style={styles.apptDocSpec}>{providerSpecialty(upcomingApptDoc)}</Text>
                     </View>
                   </View>
                   <View style={styles.chatBtn}>
-                    <MaterialIcons name="chat" size={18} color={colors.text.dark} />
+                    <MaterialIcons name="chat" size={18} color={colors.text.medium} />
                   </View>
                 </View>
 
@@ -278,7 +350,7 @@ export const DashboardScreen: React.FC = () => {
                     onPress={() =>
                       navigation.navigate('BookAppointment', {
                         providerId: upcomingAppt.provider_id,
-                        doctorName: providerName(upcomingAppt),
+                        doctorName: providerName(upcomingApptDoc),
                       })
                     }
                   >
@@ -313,22 +385,24 @@ export const DashboardScreen: React.FC = () => {
                     key={doc.id ?? doc.user_id}
                     style={styles.docCard}
                     onPress={() =>
-                      navigation.navigate('BookAppointment', {
-                        doctorName: `Dr. ${doc.firstName ?? ''} ${doc.lastName ?? ''}`.trim(),
-                        providerId: doc.user_id,
-                      })
+                      navigation.navigate('DoctorDetails', {doctorId: doc.user_id})
                     }
                   >
-                    <View style={styles.docImage} />
+                    <View style={styles.docImage}>
+                      {doc?.profilePicture?.url ? 
+                      <Image source={{ uri: doc?.profilePicture?.url}} style={styles.docProfileImage}/> :
+                      <AvatarFromString input={(doc.firstName) || 'Doctor'} size={100} />
+                      }
+                    </View>
                     <View style={styles.docInfo}>
                       <Text style={styles.docName}>
-                        Dr. {doc.firstName ?? ''} {doc.lastName ?? ''}
+                        Doctor {doc.firstName ?? ''} {doc.lastName ?? ''}
                       </Text>
                       <Text style={styles.docSpecialty} numberOfLines={1}>
                         {doc.speciality ?? 'General Practitioner'}
                       </Text>
                       <View style={styles.docRatingRow}>
-                        <MaterialIcons name="star" size={12} color="#f98007" />
+                        <MaterialIcons name="star" size={12} color={colors.primary[900]} />
                         <Text style={styles.docRating}>{doc.rating?.toFixed(1) ?? '—'}</Text>
                       </View>
                     </View>
@@ -340,13 +414,93 @@ export const DashboardScreen: React.FC = () => {
             )}
           </View>
 
+          {/* Available Pharmacy */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Pharmacies</Text>
+            {loading ? (
+              <ActivityIndicator color={colors.primary[950]} />
+            ) : pharma.length > 0 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.doctorsScroll}>
+                {pharma.map((pharm) => (
+                  <TouchableOpacity
+                    key={pharm.id ?? pharm.user_id}
+                    style={styles.docCard}
+                    onPress={() =>
+                      navigation.navigate('DoctorDetails', {doctorId: pharm.user_id})
+                    }
+                  >
+                    <View style={styles.docImage}>
+                      {pharm?.profilePicture?.url ? <Image source={{ uri: pharm?.profilePicture?.url}} style={styles.docProfileImage}/> : 
+                        <AvatarFromString input={(pharm.firstName) || 'Pharmacy'} size={100}/>
+                      }
+                    </View>
+                    <View style={styles.docInfo}>
+                      <Text style={styles.docName}>
+                        {pharm.name ?? 'Pharmacy'}
+                      </Text>
+                      <Text style={styles.docSpecialty} numberOfLines={1}>
+                        {pharm.bio && pharm.bio?.length > 20 ? pharm.bio?.slice(0, 20) + '…' : pharm.bio ?? 'Drug Store'}
+                      </Text>
+                      <View style={styles.docRatingRow}>
+                        <MaterialIcons name="star" size={12} color={colors.primary[900]} />
+                        <Text style={styles.docRating}>{pharm.rating?.toFixed(1) ?? '—'}</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            ) : (
+              <Text style={styles.emptyText}>No Pharmacies available</Text>
+            )}
+          </View>
+
+          {/* Laboratories */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Labs</Text>
+            {loading ? (
+              <ActivityIndicator color={colors.primary[950]} />
+            ) : labs.length > 0 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.doctorsScroll}>
+                {labs.map((lab) => (
+                  <TouchableOpacity
+                    key={lab.id ?? lab.user_id}
+                    style={styles.docCard}
+                    onPress={() =>
+                      navigation.navigate('DoctorDetails', {doctorId: lab.user_id})
+                    }
+                  >
+                    <View style={styles.docImage}>
+                      {lab?.profilePicture?.url ? <Image source={{ uri: lab?.profilePicture?.url}} style={styles.docProfileImage}/> : 
+                        <AvatarFromString input={(lab.name) || 'Laboratory'} size={100}/>
+                      }
+                    </View>
+                    <View style={styles.docInfo}>
+                      <Text style={styles.docName}>
+                        {lab.name ?? 'Laboratory'}
+                      </Text>
+                      <Text style={styles.docSpecialty} numberOfLines={1}>
+                        {lab.bio && lab.bio?.length > 20 ? lab.bio?.slice(0, 20) + '…' : lab.bio ?? 'Laboratory'}
+                      </Text>
+                      <View style={styles.docRatingRow}>
+                        <MaterialIcons name="star" size={12} color={colors.primary[900]} />
+                        <Text style={styles.docRating}>{lab.rating?.toFixed(1) ?? '—'}</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            ) : (
+              <Text style={styles.emptyText}>No Pharmacies available</Text>
+            )}
+          </View>
+
           {/* Recent Activity */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Recent Activity</Text>
             {recentAppts.length === 0 && !loading ? (
               <Text style={styles.emptyText}>No recent activity</Text>
             ) : (
-              recentAppts.map((appt) => (
+              recentAppts.map(async (appt) => (
                 <View key={appt.id} style={styles.activityCard}>
                   <View style={styles.activityIconBox}>
                     <MaterialIcons name="calendar-today" size={20} color={colors.text.dark} />
@@ -354,7 +508,7 @@ export const DashboardScreen: React.FC = () => {
                   <View style={styles.activityInfo}>
                     <Text style={styles.activityTitle}>Appointment completed</Text>
                     <Text style={styles.activitySub}>
-                      {providerName(appt)} · {formatApptTime(appt.appointment_time)}
+                      {providerName(await providerData(appt.provider_id, 'consultant'))} · {formatApptTime(appt.appointment_time)}
                     </Text>
                   </View>
                 </View>
@@ -374,12 +528,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.base,
     paddingTop: spacing.md,
     paddingBottom: spacing.xl,
+    borderBottomLeftRadius: spacing.xl,
+    borderBottomRightRadius: spacing.xl,
+    elevation: 5,
   },
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.base,
+    marginBottom: spacing.sm,
     marginTop: spacing.xs,
   },
   logoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
@@ -391,7 +548,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logoImage: { width: 60, height: 60 },
+  logoImage: { width: 70, height: 70 },
   logoText: {
     fontFamily: typography.fonts.bold,
     fontSize: typography.sizes.sm,
@@ -424,14 +581,20 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.sm,
     color: colors.text.medium,
   },
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  statsGrid: { 
+    flexDirection: 'row', 
+    flexWrap: 'wrap', 
+    justifyContent: 'space-evenly', 
+    gap: spacing.sm,
+  },
   statCard: {
-    width: '48%',
+    width: '45%',
     backgroundColor: colors.primary[900],
     borderRadius: radius.lg,
     padding: spacing.base,
-    minHeight: 100,
+    minHeight: 120,
     justifyContent: 'space-between',
+    elevation: 3,
   },
   statArrow: {
     width: 20,
@@ -441,11 +604,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'flex-end',
+    transform: [{ rotate: '315deg' }],
   },
   statValue: {
     fontFamily: typography.fonts.regular,
-    fontSize: typography.sizes.lg,
+    fontSize: typography.sizes.xl,
     color: colors.text.white,
+  },
+  statTouch: {
+    flex: 1,
+    backgroundColor: colors.primary[900],
+    gap: spacing.sm,
+    justifyContent: 'space-between',
   },
   statLabel: {
     fontFamily: typography.fonts.regular,
@@ -464,14 +634,22 @@ const styles = StyleSheet.create({
   quickTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+  },
+  quickImage: {
+    position: 'relative',
+    width: 30,
+    height: 30,
+    borderRadius: 3,
+    left: -spacing.xxl,
   },
   quickCardLabel: {
     fontFamily: typography.fonts.regular,
     fontSize: typography.sizes.sm,
     color: colors.text.medium,
     flex: 1,
-    marginRight: spacing.xs,
+    marginLeft: spacing.xs,
+    verticalAlign: 'middle',
   },
   quickBtn: {
     backgroundColor: colors.primary[950],
@@ -484,6 +662,7 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     justifyContent: 'center',
     height: 40,
+    elevation: 3,
   },
   quickBtnText: {
     fontFamily: typography.fonts.regular,
@@ -499,32 +678,43 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontFamily: typography.fonts.regular,
-    fontSize: typography.sizes.base,
+    fontSize: typography.sizes.md,
+    fontWeight: 500,
     color: colors.text.medium,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   viewAll: {
     fontFamily: typography.fonts.regular,
-    fontSize: typography.sizes.base,
+    fontSize: typography.sizes.sm,
     color: colors.text.medium,
+    marginBottom: spacing.sm,
   },
   apptCard: {
     backgroundColor: colors.cardBlue,
     borderRadius: radius.lg,
     padding: spacing.base,
     gap: spacing.md,
+    elevation: 5,
   },
   apptDoctorRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.purple[300],
+    paddingBottom: spacing.sm,
   },
-  apptDocInfo: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  apptDocInfo: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.md },
   apptAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
     backgroundColor: colors.white,
+  },
+  apptImg: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
   },
   apptDocName: {
     fontFamily: typography.fonts.medium,
@@ -535,6 +725,7 @@ const styles = StyleSheet.create({
     fontFamily: typography.fonts.regular,
     fontSize: typography.sizes.sm,
     color: colors.text.light,
+    textTransform: 'capitalize'
   },
   chatBtn: {
     width: 30,
@@ -546,7 +737,7 @@ const styles = StyleSheet.create({
   },
   apptMetaRow: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
+    backgroundColor: colors.cardBlue,
     borderRadius: radius.md,
     padding: spacing.sm,
     gap: spacing.sm,
@@ -554,7 +745,7 @@ const styles = StyleSheet.create({
   apptMetaBox: { flex: 1, gap: 2 },
   apptMetaSep: {
     width: 1,
-    backgroundColor: colors.border,
+    backgroundColor: colors.purple[300],
     marginVertical: spacing.xs,
   },
   apptMetaLabel: {
@@ -566,6 +757,7 @@ const styles = StyleSheet.create({
     fontFamily: typography.fonts.medium,
     fontSize: typography.sizes.sm,
     color: colors.text.dark,
+    textTransform: 'capitalize'
   },
   apptBtnRow: { flexDirection: 'row', gap: spacing.md },
   apptBtnPrimary: {
@@ -626,6 +818,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   docImage: { width: 100, backgroundColor: colors.text.dark },
+  docProfileImage: { width: 100, height: 100 },
   docInfo: {
     flex: 1,
     padding: spacing.md,
@@ -641,6 +834,7 @@ const styles = StyleSheet.create({
     fontFamily: typography.fonts.regular,
     fontSize: typography.sizes.sm,
     color: colors.text.light,
+    textTransform: 'capitalize'
   },
   docRatingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   docRating: {

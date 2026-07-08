@@ -8,6 +8,8 @@ import {
   TextInput,
   ActivityIndicator,
   RefreshControl,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -60,6 +62,7 @@ export const LabTestScreen: React.FC = () => {
           <Text style={styles.filterIcon}>⚙️</Text>
         </TouchableOpacity>
       </View>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={styles.searchRow}>
         <View style={styles.searchBox}>
           <Text style={styles.searchIcon}>🔍</Text>
@@ -78,6 +81,7 @@ export const LabTestScreen: React.FC = () => {
         <ScrollView
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadTests(); }} />}
         >
           {filtered.length === 0 ? (
@@ -114,6 +118,7 @@ export const LabTestScreen: React.FC = () => {
           )}
         </ScrollView>
       )}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };

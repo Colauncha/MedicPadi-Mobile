@@ -17,6 +17,10 @@ import { DrugDetailsScreen } from '../screens/patient/DrugDetailsScreen';
 import { LabTestScreen } from '../screens/patient/LabTestScreen';
 import { NotificationsScreen } from '../screens/patient/NotificationsScreen';
 import { EditProfileScreen } from '../screens/patient/EditProfileScreen';
+import { VerifyEmailScreen } from '../screens/patient/VerifyEmailScreen';
+import { DoctorProfileScreen } from '../screens/patient/DoctorProfileScreen';
+import { SpecialityScreen } from '../screens/patient/SpecialityScreen';
+import { DoctorsBySpecialityScreen } from '../screens/patient/DoctorsBySpecialityScreen';
 
 const Tab = createBottomTabNavigator<PatientTabParamList>();
 const Stack = createNativeStackNavigator<PatientStackParamList>();
@@ -70,6 +74,10 @@ export const PatientNavigator = () => (
     <Stack.Screen name="LabTest" component={LabTestScreen} />
     <Stack.Screen name="Notifications" component={NotificationsScreen} />
     <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+    <Stack.Screen name="DoctorDetails" component={DoctorProfileScreen} />
+    <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
+    <Stack.Screen name="Speciality" component={SpecialityScreen} />
+    <Stack.Screen name="DoctorsBySpeciality" component={DoctorsBySpecialityScreen} />
   </Stack.Navigator>
 );
 
@@ -77,9 +85,10 @@ const styles = StyleSheet.create({
   tabBar: {
     backgroundColor: colors.purple[100],  // Figma: fill=#f1eff8
     borderTopWidth: 0,
+    marginTop: -50,
     height: 120,
     paddingBottom: 60,
-    elevation: 0,
+    elevation: 2,
     shadowOpacity: 0,
     display: 'flex',
     flexDirection: 'row',
@@ -88,10 +97,10 @@ const styles = StyleSheet.create({
   tabItem: {
     alignItems: 'center',
     justifyContent: 'center',
-    // marginTop: 8,
-    paddingHorizontal: 10,
+    paddingHorizontal: 5,
     paddingVertical: 6,
     borderRadius: 10,
+    // borderWidth: 1,
     gap: 2,
     minWidth: 70,
     height: 60,

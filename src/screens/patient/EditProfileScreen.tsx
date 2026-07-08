@@ -19,6 +19,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { PatientStackParamList } from '../../navigation/types';
 import { Header } from '../../components/Header';
 import { Input } from '../../components/Input';
+import { DateInput } from '../../components/DateInput';
+import { TagInput } from '../../components/TagInput';
 import { Button } from '../../components/Button';
 import { colors, typography, spacing, radius } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
@@ -30,6 +32,9 @@ interface FormState {
   firstName: string;
   lastName: string;
   gender: string;
+  dateOfBirth: string;
+  height: string;
+  weight: string;
   bloodGroup: string;
   genotype: string;
   phoneNumber: string;
@@ -84,6 +89,9 @@ export const EditProfileScreen: React.FC = () => {
     firstName: p?.firstName ?? '',
     lastName: p?.lastName ?? '',
     gender: p?.gender ?? '',
+    dateOfBirth: p?.dateOfBirth ?? '',
+    height: p?.height ?? '',
+    weight: p?.weight ?? '',
     bloodGroup: p?.bloodGroup ?? '',
     genotype: p?.genotype ?? '',
     phoneNumber: p?.phoneNumber ?? '',
@@ -97,6 +105,8 @@ export const EditProfileScreen: React.FC = () => {
     relationship: p?.nextOfKin?.relationship ?? '',
   });
 
+  const [allergies, setAllergies] = useState<string[]>(p?.allergies ?? []);
+
   const [pickedImageUri, setPickedImageUri] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -107,6 +117,9 @@ export const EditProfileScreen: React.FC = () => {
         firstName: fp?.firstName ?? '',
         lastName: fp?.lastName ?? '',
         gender: fp?.gender ?? '',
+        dateOfBirth: fp?.dateOfBirth ?? '',
+        height: fp?.height ?? '',
+        weight: fp?.weight ?? '',
         bloodGroup: fp?.bloodGroup ?? '',
         genotype: fp?.genotype ?? '',
         phoneNumber: fp?.phoneNumber ?? '',
@@ -118,6 +131,7 @@ export const EditProfileScreen: React.FC = () => {
         email: fp?.nextOfKin?.email ?? '',
         relationship: fp?.nextOfKin?.relationship ?? '',
       });
+      setAllergies(fp?.allergies ?? []);
       setPickedImageUri(null);
     }, [profile]),
   );
@@ -160,6 +174,7 @@ export const EditProfileScreen: React.FC = () => {
         {
           ...removeUnsetFields(form),
           nextOfKin: removeUnsetFields(nok),
+          allergies,
         },
         token,
       );
@@ -184,7 +199,7 @@ export const EditProfileScreen: React.FC = () => {
       <Header title="Edit Profile" showBack />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView
           contentContainerStyle={styles.scroll}
@@ -233,6 +248,34 @@ export const EditProfileScreen: React.FC = () => {
               value={form.emergencyContact}
               onChangeText={(v) => setForm((f) => ({ ...f, emergencyContact: v }))}
             />
+            <DateInput
+              label="Date of Birth"
+              placeholder="Select date of birth"
+              value={form.dateOfBirth}
+              onChange={(v) => setForm((f) => ({ ...f, dateOfBirth: v }))}
+              maximumDate={new Date()}
+            />
+            <View style={styles.fieldRow}>
+              <View style={styles.fieldRowItem}>
+                <Input
+                  label="Height"
+                  placeholder="Enter height (cm)"
+                  value={form.height}
+                  onChangeText={(v) => setForm((f) => ({ ...f, height: v }))}
+                  keyboardType="numeric"
+                />
+              </View>
+              <View style={styles.fieldRowItem}>
+                <Input
+                  label="Weight"
+                  placeholder="Enter weight (kg)"
+                  value={form.weight}
+                  onChangeText={(v) => setForm((f) => ({ ...f, weight: v }))}
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
+          
             <ChipSelect
               label="Gender"
               options={GENDER_OPTIONS}
@@ -251,7 +294,15 @@ export const EditProfileScreen: React.FC = () => {
               value={form.genotype}
               onChange={(v) => setForm((f) => ({ ...f, genotype: v }))}
             />
+            <TagInput
+              label="Allergies"
+              placeholder="Type an allergy, then comma to add"
+              value={allergies}
+              onChange={setAllergies}
+            />
           </View>
+
+          <View style={styles.divider} />
 
           {/* Next of Kin */}
           <View style={styles.section}>
@@ -301,7 +352,7 @@ export const EditProfileScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  scroll: { padding: spacing.base, paddingBottom: 40 },
+  scroll: { flexGrow: 1, padding: spacing.base, paddingBottom: 40 },
   avatarSection: { alignItems: 'center', marginBottom: spacing.xl },
   avatarContainer: { position: 'relative', marginBottom: spacing.sm },
   avatar: {
@@ -325,6 +376,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.background,
   },
+  fieldRow: { flexDirection: 'row', gap: spacing.sm },
+  fieldRowItem: { flex: 1 },
   changePhotoText: {
     fontFamily: typography.fonts.regular,
     fontSize: typography.sizes.sm,
@@ -364,4 +417,9 @@ const styles = StyleSheet.create({
   },
   chipTextActive: { color: colors.text.white },
   saveBtn: { marginTop: spacing.md },
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.md,
+  },
 });

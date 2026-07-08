@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useNavigation } from '@react-navigation/native';
 import { AuthStackParamList } from '../../navigation/types';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
@@ -26,7 +25,6 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const rootNav = useNavigation<any>();
   const { login } = useAuth();
 
   const handleLogin = async () => {
@@ -38,7 +36,6 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
     }
     try {
       await login(email, password);
-      rootNav.reset({ index: 0, routes: [{ name: 'Patient' }] });
     } catch (e: any) {
       Alert.alert('Login failed', e.message ?? 'Invalid credentials. Please try again.');
     } finally {

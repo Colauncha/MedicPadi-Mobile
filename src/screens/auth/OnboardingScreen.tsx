@@ -1,4 +1,7 @@
 import React, { useState, useRef } from 'react';
+import * as SecureStore from 'expo-secure-store';
+
+const ONBOARDING_KEY = 'mp_onboarding_done';
 import {
   View,
   Text,
@@ -45,22 +48,27 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
 
+  const markSeenAndGo = () => {
+    SecureStore.setItemAsync(ONBOARDING_KEY, '1').catch(() => {});
+    navigation.replace('UserType');
+  };
+
   const handleNext = () => {
     if (currentIndex < slides.length - 1) {
       const next = currentIndex + 1;
       scrollRef.current?.scrollTo({ x: next * width, animated: true });
       setCurrentIndex(next);
     } else {
-      navigation.replace('UserType');
+      markSeenAndGo();
     }
   };
 
   const handleScroll = (event: any) => {
     const index = Math.round(event.nativeEvent.contentOffset.x / width);
     setCurrentIndex(index);
-  }
+  };
 
-  const handleSkip = () => navigation.replace('UserType');
+  const handleSkip = () => markSeenAndGo();
 
   const isLast = currentIndex === slides.length - 1;
 

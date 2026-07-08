@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -22,6 +23,7 @@ import {
   apiGetAppointments,
   apiCancelAppointment,
 } from '../../services/api';
+import { AvatarFromString } from '../../utils';
 
 type Tab = 'upcoming' | 'past';
 
@@ -70,16 +72,32 @@ export const AppointmentsScreen: React.FC = () => {
   const loadAppointments = useCallback(async () => {
     if (!token) return;
     try {
-      const [upcomingRes, pastRes] = await Promise.allSettled([
-        apiGetAppointments({ status: 'pending,confirmed', limit: 20 }, token),
-        apiGetAppointments({ status: 'completed,cancelled,canceled', limit: 20 }, token),
+      const [pendingRes, confirmedRes, completedRes, canceledRes] = await Promise.allSettled([
+        apiGetAppointments({ status: 'pending', limit: 20 }, token),
+        apiGetAppointments({ status: 'confirmed', limit: 20 }, token),
+        apiGetAppointments({ status: 'completed', limit: 20 }, token),
+        apiGetAppointments({ status: 'canceled', limit: 20 }, token),
       ]);
-      if (upcomingRes.status === 'fulfilled') {
-        setUpcoming(Array.isArray(upcomingRes.value.data) ? upcomingRes.value.data : []);
-      }
-      if (pastRes.status === 'fulfilled') {
-        setPast(Array.isArray(pastRes.value.data) ? pastRes.value.data : []);
-      }
+
+      const pendingAppointments =
+        pendingRes.status === 'fulfilled' && Array.isArray(pendingRes.value.data)
+          ? pendingRes.value.data
+          : [];
+      const confirmedAppointments =
+        confirmedRes.status === 'fulfilled' && Array.isArray(confirmedRes.value.data)
+          ? confirmedRes.value.data
+          : [];
+      const completedAppointments =
+        completedRes.status === 'fulfilled' && Array.isArray(completedRes.value.data)
+          ? completedRes.value.data
+          : [];
+      const canceledAppointments =
+        canceledRes.status === 'fulfilled' && Array.isArray(canceledRes.value.data)
+          ? canceledRes.value.data
+          : [];
+
+      setUpcoming([...pendingAppointments, ...confirmedAppointments]);
+      setPast([...completedAppointments, ...canceledAppointments]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -145,7 +163,13 @@ export const AppointmentsScreen: React.FC = () => {
             data.map((item) => (
               <View key={item.id} style={styles.card}>
                 <View style={styles.cardRow}>
-                  <View style={styles.docAvatar} />
+                    <View style={styles.docAvatar}>
+                      {item.provider?.profilePicture?.url ? (
+                        <Image source={{ uri: item.provider.profilePicture.url }} style={styles.docProfileImage} />
+                      ) : (
+                        <AvatarFromString input={doctorName(item)} size={48} />
+                      )}
+                    </View>
                   <View style={styles.docInfo}>
                     <Text style={styles.docName}>{doctorName(item)}</Text>
                     <Text style={styles.docSpecialty}>{doctorSpecialty(item)}</Text>
@@ -165,7 +189,8 @@ export const AppointmentsScreen: React.FC = () => {
                       }
                       variant="outline"
                       size="sm"
-                      style={{ flex: 1, marginRight: spacing.sm }}
+                      textStyle={{ color: colors.text.white }}
+                      style={{ flex: 1, marginRight: spacing.sm, backgroundColor: colors.primary[950] }}
                     />
                     <Button
                       label="Cancel"
@@ -173,7 +198,7 @@ export const AppointmentsScreen: React.FC = () => {
                       variant="ghost"
                       size="sm"
                       textStyle={{ color: colors.danger }}
-                      style={{ flex: 1 }}
+                      style={{ flex: 1, borderColor: colors.danger, borderWidth: 1 }}
                     />
                   </View>
                 )}
@@ -252,6 +277,11 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     backgroundColor: colors.text.dark,
   },
+  docProfileImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
   docInfo: { flex: 1 },
   docName: {
     fontFamily: typography.fonts.medium,
@@ -276,4 +306,5 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
   },
   bookBtn: { marginTop: spacing.base },
+  statusBadge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
 });

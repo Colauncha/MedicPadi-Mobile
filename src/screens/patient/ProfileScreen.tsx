@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  RefreshControl,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,24 +19,15 @@ import { Header } from '../../components/Header';
 import { Button } from '../../components/Button';
 import { colors, typography, spacing, radius } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
-import { apiGetAppointments } from '../../services/api';
+import { apiSendVerificationEmail } from '../../services/api';
 
 type Nav = NativeStackNavigationProp<PatientStackParamList>;
 
 export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
-  const rootNav = useNavigation<any>();
   const { profile, user, token, logout, refreshProfile } = useAuth();
-  const [apptCount, setApptCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState<'personal' | 'reports'>('personal')
-
-  useEffect(() => {
-    if (!token) return;
-    apiGetAppointments({ limit: 1 }, token)
-      .then((res) => setApptCount(res.total ?? 0))
-      .catch(() => setApptCount(null));
-  }, [token]);
+  const [sendingVerification, setSendingVerification] = useState(false);
 
   const handleLogout = () => {
     Alert.alert('Log Out', 'Are you sure you want to log out?', [
@@ -46,7 +38,6 @@ export const ProfileScreen: React.FC = () => {
         onPress: async () => {
           setLoading(true);
           await logout();
-          rootNav.reset({ index: 0, routes: [{ name: 'Auth' }] });
         },
       },
     ]);
@@ -54,11 +45,40 @@ export const ProfileScreen: React.FC = () => {
 
   const resolvedUser = user ?? profile?.rest ?? null;
   const p = profile?.profile;
+  const isVerified = resolvedUser?.isEmailVerified ?? true;
+
+  const handleSendVerification = async () => {
+    if (!token) return;
+    setSendingVerification(true);
+    try {
+      await apiSendVerificationEmail(token);
+      Alert.alert(
+        'Code sent',
+        `A verification code has been sent to ${resolvedUser?.email ?? 'your email'}.`,
+        [{ text: 'Enter Code', onPress: () => navigation.navigate('VerifyEmail') }],
+      );
+    } catch (e: any) {
+      Alert.alert('Failed', e?.message ?? 'Could not send verification email. Try again.');
+    } finally {
+      setSendingVerification(false);
+    }
+  };
 
   const displayName =
     p?.firstName
       ? `${p.firstName} ${p.lastName ?? ''}`.trim()
       : resolvedUser?.fullName ?? resolvedUser?.email ?? 'User';
+
+  const calcAge = (dob?: string): number | null => {
+    if (!dob) return null;
+    const birthDate = new Date(dob);
+    if (isNaN(birthDate.getTime())) return null;
+    return Math.floor((Date.now() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+  };
+  const age = calcAge(p?.dateOfBirth);
+  const ageDisplay = age !== null ? `${age}yrs` : '—';
+  const weightDisplay = p?.weight ? `${p.weight}kg` : '—';
+  const heightDisplay = p?.height ? `${p.height}cm` : '—';
 
   const personalInfo = [
     { label: 'Name', value: displayName },
@@ -92,9 +112,32 @@ export const ProfileScreen: React.FC = () => {
       {loading ? (
         <ActivityIndicator style={{ flex: 1 }} color={colors.primary[950]} />
       ) : (
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          contentContainerStyle={styles.scroll} 
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={loading} onRefresh={refreshProfile} />}
+        >
           {/* Profile header */}
-          <View style={styles.profileCard}>
+          <View style={styles.profileCardWrapper}>
+            <View style={styles.profileCard}>
+              <Text style={styles.name}>{displayName}</Text>
+              <View style={styles.statsRow}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statLabel}>Age</Text>
+                  <Text style={styles.statValue}>{ageDisplay}</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <Text style={styles.statLabel}>Weight</Text>
+                  <Text style={styles.statValue}>{weightDisplay}</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <Text style={styles.statLabel}>Height</Text>
+                  <Text style={styles.statValue}>{heightDisplay}</Text>
+                </View>
+              </View>
+            </View>
             <View style={styles.avatarWrapper}>
               {p?.profilePicture?.url ? (
                 <Image source={{ uri: p.profilePicture.url }} style={styles.avatar} />
@@ -102,18 +145,26 @@ export const ProfileScreen: React.FC = () => {
                 <View style={styles.avatar} />
               )}
             </View>
-            <Text style={styles.name}>{displayName}</Text>
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Text style={styles.statLabel}>Role</Text>
-                <Text style={styles.statValue}>{resolvedUser?.role ?? profile?.rest?.role ?? 'patient'}</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statLabel}>Appointments</Text>
-                <Text style={styles.statValue}>{apptCount ?? '—'}</Text>
-              </View>
-            </View>
           </View>
+          {!isVerified && (
+            <TouchableOpacity
+              style={styles.verifyBanner}
+              onPress={handleSendVerification}
+              disabled={sendingVerification}
+              activeOpacity={0.8}
+            >
+              <MaterialIcons name="mark-email-unread" size={20} color={colors.warning} />
+              <View style={styles.verifyBannerText}>
+                <Text style={styles.verifyBannerTitle}>Email not verified</Text>
+                <Text style={styles.verifyBannerSub}>Tap to send a verification code</Text>
+              </View>
+              {sendingVerification
+                ? <ActivityIndicator size="small" color={colors.warning} />
+                : <MaterialIcons name="chevron-right" size={20} color={colors.warning} />
+              }
+            </TouchableOpacity>
+          )}
+
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Personal Information</Text>
@@ -163,45 +214,56 @@ export const ProfileScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scroll: { padding: spacing.base, paddingBottom: 40 },
+  profileCardWrapper: {
+    position: 'relative',
+    marginTop: 44,
+    marginBottom: spacing.xl,
+  },
   profileCard: {
     backgroundColor: colors.cardLight,
     borderRadius: radius.lg,
-    padding: spacing.base,
+    paddingTop: 44 + spacing.md,
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.base,
     alignItems: 'center',
-    marginBottom: spacing.xl,
   },
-  avatarWrapper: { marginBottom: spacing.md },
+  avatarWrapper: {
+    position: 'absolute',
+    top: -44,
+    alignSelf: 'center',
+  },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
     backgroundColor: colors.text.dark,
-    borderWidth: 3,
+    borderWidth: 4,
     borderColor: colors.background,
   },
   name: {
-    fontFamily: typography.fonts.regular,
+    fontFamily: typography.fonts.medium,
     fontSize: typography.sizes.lg,
     color: colors.text.dark,
-    marginBottom: spacing.md,
+    marginBottom: spacing.base,
   },
-  statsRow: { flexDirection: 'row', gap: spacing.base },
-  statItem: {
-    backgroundColor: colors.cardLight,
-    borderRadius: radius.md,
-    padding: spacing.sm,
+  statsRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    minWidth: 100,
+    justifyContent: 'center',
+    width: '100%',
   },
+  statItem: { flex: 1, alignItems: 'center' },
+  statDivider: { width: 1, height: 32, backgroundColor: colors.border },
   statLabel: {
-    fontFamily: typography.fonts.medium,
-    fontSize: typography.sizes.md,
+    fontFamily: typography.fonts.regular,
+    fontSize: typography.sizes.base,
     color: colors.text.dark,
+    marginBottom: spacing.xs,
   },
   statValue: {
-    fontFamily: typography.fonts.regular,
-    fontSize: typography.sizes.md,
-    color: colors.primary[800],
+    fontFamily: typography.fonts.medium,
+    fontSize: typography.sizes.base,
+    color: colors.primary[700],
   },
   section: { marginBottom: spacing.xl },
   sectionHeader: {
@@ -251,4 +313,26 @@ const styles = StyleSheet.create({
     color: colors.text.dark,
   },
   linkArrow: { color: colors.text.muted, fontSize: 16 },
+  verifyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: '#fff8ee',
+    borderWidth: 1,
+    borderColor: colors.warning,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.base,
+  },
+  verifyBannerText: { flex: 1 },
+  verifyBannerTitle: {
+    fontFamily: typography.fonts.medium,
+    fontSize: typography.sizes.base,
+    color: colors.warning,
+  },
+  verifyBannerSub: {
+    fontFamily: typography.fonts.regular,
+    fontSize: typography.sizes.sm,
+    color: colors.text.light,
+  },
 });

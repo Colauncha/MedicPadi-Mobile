@@ -13,6 +13,7 @@ import {
   apiRegister,
   apiLogout,
   apiGetProfile,
+  setUnauthorizedHandler,
   storeToken,
   getStoredToken,
   clearStoredToken,
@@ -49,6 +50,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     hydrateAuth();
+  }, []);
+
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      clearStoredToken().catch(() => {});
+      clearStoredUser().catch(() => {});
+      setToken(null);
+      setUser(null);
+      setProfile(null);
+    });
   }, []);
 
   const hydrateAuth = async () => {

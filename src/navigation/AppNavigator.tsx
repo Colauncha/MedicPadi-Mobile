@@ -16,12 +16,12 @@ export const AppNavigator = () => {
   }
 
   return (
-    <Stack.Navigator
-      screenOptions={{ headerShown: false }}
-      initialRouteName={token ? 'Patient' : 'Auth'}
-    >
-      <Stack.Screen name="Auth" component={AuthNavigator} />
-      <Stack.Screen name="Patient" component={PatientNavigator} />
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      {token ? (
+        <Stack.Screen name="Patient" component={PatientNavigator} />
+      ) : (
+        <Stack.Screen name="Auth" component={AuthNavigator} />
+      )}
     </Stack.Navigator>
   );
 };

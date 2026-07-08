@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "MedicPadiTemp",
-    "slug": "MedicPadiTemp",
+    "slug": "medicpadi-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -20,14 +20,21 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.MedicPadiTemp"
+      "package": "com.Colauncha.MedicPadi"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-font",
-      "expo-secure-store"
-    ]
+      "expo-secure-store",
+      "@react-native-community/datetimepicker"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "75c0e70b-23b4-4888-bfe9-cbfdf5293817"
+      }
+    },
+    "owner": "colauncha-team"
   }
 }
