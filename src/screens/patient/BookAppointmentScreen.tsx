@@ -408,7 +408,7 @@ export const BookAppointmentScreen: React.FC = () => {
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+export const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { padding: spacing.base, paddingBottom: 48 },

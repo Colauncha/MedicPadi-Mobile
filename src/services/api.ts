@@ -165,13 +165,25 @@ export interface AppointmentData {
   patient_id: string;
   appointment_time: string;
   description?: string;
-  meeting_link?: string;
+  // meeting_link?: string;
+  join_link?: string;
+  meeting_id?: number;
   sessionCost?: number;
   sessions?: number;
   status: string;
+  payment_status?: string;
   provider?: ProfileFields;
   patient?: ProfileFields;
   createdAt?: string;
+}
+
+export interface PaymentLinkAppointmentData extends AppointmentData {
+  sessions: number;
+  authorization_url: string;
+  reference: string;
+  access_code: string;
+  total_amount: number;
+  currency: string;
 }
 
 export interface DrugData {
@@ -300,6 +312,17 @@ export const apiGetAppointments = (
   request<Paginated<AppointmentData>>(
     'GET',
     `/orders/appointments${toQS(params)}`,
+    undefined,
+    token,
+  );
+
+export const apiGetOneAppointment = (
+  id: string,
+  token: string,
+) =>
+  request<AppointmentData | PaymentLinkAppointmentData>(
+    'GET',
+    `/orders/appointments/${id}`,
     undefined,
     token,
   );

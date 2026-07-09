@@ -1,3 +1,5 @@
+import { AppointmentData, ProfileFields } from "../services/api";
+
 export type AuthStackParamList = {
   Splash: undefined;
   Onboarding: undefined;
@@ -16,6 +18,7 @@ export type PatientTabParamList = {
 export type PatientStackParamList = {
   PatientTabs: undefined;
   BookAppointment: { doctorName?: string; providerId?: string };
+  BookingDetails: { bookingId: string, doctorId: string, apptData?: AppointmentData, doctorData?: ProfileFields };
   MedicalHistory: undefined;
   Profile: undefined;
   PatientProfile: undefined;
@@ -27,6 +30,7 @@ export type PatientStackParamList = {
   VerifyEmail: undefined;
   Speciality: undefined;
   DoctorsBySpeciality: { speciality: string; label: string };
+  PaymentWebView: { url: string; reference?: string };
 };
 
 export type RootStackParamList = {

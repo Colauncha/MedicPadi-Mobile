@@ -21,6 +21,8 @@ import { VerifyEmailScreen } from '../screens/patient/VerifyEmailScreen';
 import { DoctorProfileScreen } from '../screens/patient/DoctorProfileScreen';
 import { SpecialityScreen } from '../screens/patient/SpecialityScreen';
 import { DoctorsBySpecialityScreen } from '../screens/patient/DoctorsBySpecialityScreen';
+import { BookingDetailsScreen } from '../screens/patient/BookingDetailsScreen';
+import { PaymentWebViewScreen } from '../screens/patient/PaymentWebViewScreen';
 
 const Tab = createBottomTabNavigator<PatientTabParamList>();
 const Stack = createNativeStackNavigator<PatientStackParamList>();
@@ -68,6 +70,7 @@ export const PatientNavigator = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="PatientTabs" component={PatientTabs} />
     <Stack.Screen name="BookAppointment" component={BookAppointmentScreen} />
+    <Stack.Screen name="BookingDetails" component={BookingDetailsScreen} />
     <Stack.Screen name="MedicalHistory" component={MedicalHistoryScreen} />
     <Stack.Screen name="Profile" component={ProfileScreen} />
     <Stack.Screen name="DrugDetails" component={DrugDetailsScreen} />
@@ -78,6 +81,7 @@ export const PatientNavigator = () => (
     <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
     <Stack.Screen name="Speciality" component={SpecialityScreen} />
     <Stack.Screen name="DoctorsBySpeciality" component={DoctorsBySpecialityScreen} />
+    <Stack.Screen name="PaymentWebView" component={PaymentWebViewScreen} />
   </Stack.Navigator>
 );
 

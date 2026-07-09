@@ -356,7 +356,12 @@ export const DashboardScreen: React.FC = () => {
                   >
                     <Text style={styles.apptBtnPrimaryText}>Re-schedule</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.apptBtnOutline}>
+                  <TouchableOpacity
+                    style={styles.apptBtnOutline}
+                    onPress={() =>
+                      navigation.navigate('BookingDetails', { bookingId: upcomingAppt.id, doctorId: upcomingAppt.provider_id })
+                    }
+                  >
                     <Text style={styles.apptBtnOutlineText}>View Details</Text>
                   </TouchableOpacity>
                 </View>
