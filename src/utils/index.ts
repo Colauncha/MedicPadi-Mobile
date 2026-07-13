@@ -1,4 +1,4 @@
 import AvatarFromString from "./avatar";
-import truncateEmail from "./truncateEmail";
+import { truncate, truncateEmail } from './truncate';
 
-export { AvatarFromString, truncateEmail }
+export { AvatarFromString, truncate, truncateEmail };

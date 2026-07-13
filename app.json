@@ -8,8 +8,12 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.colauncha.medicpadi",
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "Choose a profile picture from your photo library."
+        "NSPhotoLibraryUsageDescription": "Choose a profile picture from your photo library.",
+        "NSCameraUsageDescription": "MedicPadi needs camera access so you can join video appointments with your doctor.",
+        "NSMicrophoneUsageDescription": "MedicPadi needs microphone access so you can join video appointments with your doctor.",
+        "NSBluetoothPeripheralUsageDescription": "MedicPadi needs Bluetooth access to support Bluetooth headsets during video appointments."
       }
     },
     "android": {
@@ -28,7 +32,16 @@
     "plugins": [
       "expo-font",
       "expo-secure-store",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 28
+          }
+        }
+      ],
+      "./plugins/withZoomAndroidManifest"
     ],
     "extra": {
       "eas": {

@@ -23,6 +23,7 @@ import { SpecialityScreen } from '../screens/patient/SpecialityScreen';
 import { DoctorsBySpecialityScreen } from '../screens/patient/DoctorsBySpecialityScreen';
 import { BookingDetailsScreen } from '../screens/patient/BookingDetailsScreen';
 import { PaymentWebViewScreen } from '../screens/patient/PaymentWebViewScreen';
+import { ZoomMeetingScreen } from '../screens/patient/ZoomMeetingScreen';
 
 const Tab = createBottomTabNavigator<PatientTabParamList>();
 const Stack = createNativeStackNavigator<PatientStackParamList>();
@@ -82,6 +83,11 @@ export const PatientNavigator = () => (
     <Stack.Screen name="Speciality" component={SpecialityScreen} />
     <Stack.Screen name="DoctorsBySpeciality" component={DoctorsBySpecialityScreen} />
     <Stack.Screen name="PaymentWebView" component={PaymentWebViewScreen} />
+    <Stack.Screen
+      name="ZoomMeeting"
+      component={ZoomMeetingScreen}
+      options={{ headerShown: false, gestureEnabled: false }}
+    />
   </Stack.Navigator>
 );
 

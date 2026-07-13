@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from '../../components/Header';
 import { MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/core';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -24,10 +25,12 @@ import {
   ProfileFields,
   apiGetOneAppointment,
   apiGetProfileById,
+  apiVerifyTransaction,
 } from '../../services/api';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { PatientStackParamList } from '../../navigation/types';
 import { Button } from '../../components/Button';
+import { truncate } from '../../utils';
 
 type Nav = NativeStackNavigationProp<PatientStackParamList>;
 type Route = RouteProp<PatientStackParamList, 'BookingDetails'>;
@@ -69,11 +72,11 @@ const PAYMENT_STATUS_CONFIG: Record<
   string,
   { color: string; bgColor: string }
 > = {
-  paid: { color: colors.green[600], bgColor: colors.green[100] },
-  success: { color: colors.green[600], bgColor: colors.green[100] },
-  pending: { color: colors.warn[600], bgColor: colors.warn[100] },
-  failed: { color: colors.error[500], bgColor: colors.error[100] },
-  cancelled: { color: colors.error[500], bgColor: colors.error[100] },
+  payment_confirmed: { color: colors.green[600], bgColor: colors.green[100] },
+  payment_completed: { color: colors.green[600], bgColor: colors.green[100] },
+  payment_pending: { color: colors.warn[600], bgColor: colors.warn[100] },
+  payment_failed: { color: colors.error[500], bgColor: colors.error[100] },
+  payment_cancelled: { color: colors.error[500], bgColor: colors.error[100] },
 };
 
 export const BookingDetailsScreen = () => {
@@ -159,10 +162,10 @@ export const BookingDetailsScreen = () => {
     }
   }, [appt]);
 
-  useEffect(() => {
-    console.log('Doctor:', doctor);
-    console.log('Appointment:', appt);
-  }, [doctor, appt]);
+  // useEffect(() => {
+  //   // console.log('Doctor:', doctor);
+  //   console.log('Appointment:', appt);
+  // }, [doctor, appt]);
 
   const fullName = doctor
     ? [doctor.firstName, doctor.lastName].filter(Boolean).join(' ')
@@ -176,8 +179,8 @@ export const BookingDetailsScreen = () => {
     ? appt.description.split('–')[1].trim()
     : appt?.description;
 
-  const paymentStatusInfo = appt?.payment_status
-    ? (PAYMENT_STATUS_CONFIG[appt.payment_status.toLowerCase()] ?? {
+  const paymentStatusInfo = appt?.paymentStatus
+    ? (PAYMENT_STATUS_CONFIG[appt.paymentStatus.toLowerCase()] ?? {
         color: colors.text.light,
         bgColor: colors.card,
       })
@@ -198,6 +201,18 @@ export const BookingDetailsScreen = () => {
         minute: '2-digit',
       })
     : '—';
+
+  const paymentData = appt as PaymentLinkAppointmentData;
+
+  const handleVerifyPayment = async () => {
+    const response = await apiVerifyTransaction(
+      paymentData.reference,
+      token || ''
+    );
+    if (response.status) {
+      handleReload();
+    }
+  };
 
   if (loading) {
     return (
@@ -356,6 +371,43 @@ export const BookingDetailsScreen = () => {
                 </Text>
               </View>
             </View>
+            {appt?.paymentStatus === 'payment_confirmed' && (
+              <View style={styles.visitInfoRow}>
+                <View style={styles.visitInfoIcon}>
+                  <MaterialIcons
+                    name="videocam"
+                    size={24}
+                    color={colors.primary[900]}
+                  />
+                </View>
+                <View style={styles.visitInfoContent}>
+                  <Text style={styles.visitInfoLabel}>Meeting Link</Text>
+                  <Text style={styles.visitInfoText}>
+                    {truncate(appt?.join_link || '', 30)}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() =>
+                    navigation.navigate('ZoomMeeting', {
+                      appointmentId: appt!.id,
+                      meetingNumber: String(appt!.meeting_id),
+                      meetingPassword: appt!.meeting_password,
+                      joinLink: appt?.join_link,
+                      meetingLink: appt?.meeting_link,
+                    })
+                  }
+                  disabled={!appt?.meeting_id}
+                  style={styles.navArrow}
+                >
+                  <Text style={styles.navArrowText}>Join</Text>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={20}
+                    color={colors.primary[950]}
+                  />
+                </TouchableOpacity>
+              </View>
+            )}
             <View style={styles.visitInfoDesc}>
               <Text style={styles.visitInfoDescLabel}>
                 Reason for appointment
@@ -431,7 +483,7 @@ export const BookingDetailsScreen = () => {
                       { color: paymentStatusInfo.color },
                     ]}
                   >
-                    {appt?.payment_status || 'Unpaid'}
+                    {appt?.paymentStatus?.split('_').join(' ') || 'Unpaid'}
                   </Text>
                 </View>
               </View>
@@ -456,28 +508,47 @@ export const BookingDetailsScreen = () => {
                   <Text
                     style={styles.paymentInfoValue}
                     numberOfLines={1}
-                    ellipsizeMode="middle"
+                    ellipsizeMode="tail"
                   >
-                    {paymentLink.authorization_url}
+                    {truncate(paymentLink.authorization_url, 25)}
                   </Text>
                 </View>
-                <TouchableOpacity
-                  style={styles.payNowBtn}
-                  onPress={() =>
-                    navigation.navigate('PaymentWebView', {
-                      url: paymentLink.authorization_url,
-                      reference: paymentLink.reference,
-                    })
-                  }
-                  activeOpacity={0.8}
+                <View
+                  style={{
+                    flex: 1,
+                    flexDirection: 'row-reverse',
+                    gap: 2,
+                    width: '100%',
+                    justifyContent: 'space-evenly',
+                  }}
                 >
-                  <Text style={styles.payNowBtnText}>Complete Payment</Text>
-                  <MaterialIcons
-                    name="north-east"
-                    size={18}
-                    color={colors.white}
-                  />
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.payNowBtn}
+                    onPress={() =>
+                      navigation.navigate('PaymentWebView', {
+                        url: paymentLink.authorization_url,
+                        reference: paymentLink.reference,
+                      })
+                    }
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.payNowBtnText}>Complete Payment</Text>
+                    <MaterialIcons
+                      name="north-east"
+                      size={14}
+                      color={colors.white}
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.verifyPaymentBtn}
+                    onPress={handleVerifyPayment}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.verifyPaymentBtnText}>
+                      Verify Payment
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
           </View>
@@ -638,6 +709,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.primary[200],
   },
+  navArrow: {
+    width: 'auto',
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignContent: 'center',
+    padding: spacing.sm,
+  },
+  navArrowText: {
+    fontFamily: typography.fonts.regular,
+    fontSize: typography.sizes.md,
+    color: colors.primary[950],
+    marginRight: spacing.xs,
+    textAlignVertical: 'center',
+  },
   uploadedFile: {
     flexDirection: 'column',
     alignItems: 'center',
@@ -720,16 +806,38 @@ const styles = StyleSheet.create({
   payNowBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     gap: spacing.sm,
     backgroundColor: colors.green[500],
     borderRadius: radius.md,
-    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     marginTop: spacing.sm,
+    width: '48%',
   },
   payNowBtnText: {
     fontFamily: typography.fonts.semiBold,
-    fontSize: typography.sizes.base,
+    fontSize: typography.sizes.sm,
+    color: colors.white,
+  },
+
+  verifyPaymentBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.blue[600],
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.blue[700],
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginTop: spacing.sm,
+    width: '48%',
+  },
+  verifyPaymentBtnText: {
+    fontFamily: typography.fonts.semiBold,
+    fontSize: typography.sizes.md,
     color: colors.white,
   },
 

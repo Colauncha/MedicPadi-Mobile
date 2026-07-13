@@ -14,4 +14,13 @@ const truncateEmail = (email: string | undefined): string => {
   return `${address.slice(0, visibleLen)}${'*'.repeat(addLen - visibleLen)}@${domain}`;
 };
 
-export default truncateEmail;
+const truncate = (input: string, len: number = 15): string => {
+  const LENGTH = Math.max(0, Math.trunc(len));
+  const chars = Array.from(input);
+
+  if (chars.length > LENGTH) {
+    return `${chars.slice(0, LENGTH).join('')}...`;
+  } else return input;
+};
+
+export { truncateEmail, truncate };

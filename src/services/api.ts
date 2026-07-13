@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
+import { truncate } from '../utils';
 
 const BASE_URL = 'https://api.medicpadi.com/api';
 // const BASE_URL = 'http://localhost:3000/api';
@@ -165,13 +166,14 @@ export interface AppointmentData {
   patient_id: string;
   appointment_time: string;
   description?: string;
-  // meeting_link?: string;
+  meeting_link?: string;
   join_link?: string;
   meeting_id?: number;
+  meeting_password?: string;
   sessionCost?: number;
   sessions?: number;
   status: string;
-  payment_status?: string;
+  paymentStatus?: string;
   provider?: ProfileFields;
   patient?: ProfileFields;
   createdAt?: string;
@@ -184,6 +186,28 @@ export interface PaymentLinkAppointmentData extends AppointmentData {
   access_code: string;
   total_amount: number;
   currency: string;
+}
+
+// Payment verify responses
+export interface TransactionVerifyResponse {
+  status: boolean;
+  message: string;
+  data: {
+    id: number;
+    domain: string;
+    status: string;
+    reference: string;
+    gateway_response: string;
+    channel: string;
+    currency: string;
+    ip_address: string;
+    meta: {
+      user_id: string;
+      source_type: string;
+      source_id: string;
+      provider_id: string;
+    }
+  }
 }
 
 export interface DrugData {
@@ -327,6 +351,18 @@ export const apiGetOneAppointment = (
     token,
   );
 
+export interface ZoomSignatureResponse {
+  signature: string;
+}
+
+export const apiGetZoomSignature = (id: string, token: string) =>
+  request<ZoomSignatureResponse>(
+    'GET',
+    `/orders/appointments/${id}/signature`,
+    undefined,
+    token
+  );
+
 export const apiBookAppointment = (
   data: {
     provider_id: string;
@@ -418,3 +454,10 @@ export const apiCreateDrugRequisition = (
   },
   token: string,
 ) => request<unknown>('POST', '/orders/drug-requisitions', data, token);
+
+// ── Transactions ─────────────────────────────────────────────────────────
+
+export const apiVerifyTransaction = (
+  reference: string,
+  token: string,
+) => request<TransactionVerifyResponse>('GET', `/transactions/verify/${reference}`, undefined, token)

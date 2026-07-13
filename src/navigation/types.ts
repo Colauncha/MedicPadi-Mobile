@@ -18,7 +18,12 @@ export type PatientTabParamList = {
 export type PatientStackParamList = {
   PatientTabs: undefined;
   BookAppointment: { doctorName?: string; providerId?: string };
-  BookingDetails: { bookingId: string, doctorId: string, apptData?: AppointmentData, doctorData?: ProfileFields };
+  BookingDetails: {
+    bookingId: string;
+    doctorId: string;
+    apptData?: AppointmentData;
+    doctorData?: ProfileFields;
+  };
   MedicalHistory: undefined;
   Profile: undefined;
   PatientProfile: undefined;
@@ -31,6 +36,13 @@ export type PatientStackParamList = {
   Speciality: undefined;
   DoctorsBySpeciality: { speciality: string; label: string };
   PaymentWebView: { url: string; reference?: string };
+  ZoomMeeting: {
+    appointmentId: string;
+    meetingNumber: string;
+    meetingPassword?: string;
+    joinLink?: string;
+    meetingLink?: string;
+  };
 };
 
 export type RootStackParamList = {
