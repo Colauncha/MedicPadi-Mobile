@@ -1,53 +1,51 @@
 {
   "expo": {
-    "name": "MedicPadiTemp",
-    "slug": "medicpadi-mobile",
+    "name": "MedicPadi-mobile",
+    "slug": "MedicPadi-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "icon": "./assets/images/icon.png",
+    "scheme": "medicpadimobile",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.colauncha.medicpadi",
-      "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "Choose a profile picture from your photo library.",
-        "NSCameraUsageDescription": "MedicPadi needs camera access so you can join video appointments with your doctor.",
-        "NSMicrophoneUsageDescription": "MedicPadi needs microphone access so you can join video appointments with your doctor.",
-        "NSBluetoothPeripheralUsageDescription": "MedicPadi needs Bluetooth access to support Bluetooth headsets during video appointments."
-      }
+      "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#000000",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false,
-      "package": "com.Colauncha.MedicPadi"
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-font",
-      "expo-secure-store",
-      "@react-native-community/datetimepicker",
+      "expo-router",
       [
-        "expo-build-properties",
+        "expo-splash-screen",
         {
-          "android": {
-            "minSdkVersion": 28
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "backgroundColor": "#000000"
           }
         }
       ],
-      "./plugins/withZoomAndroidManifest"
+      "expo-secure-store",
+      "expo-font",
+      "expo-web-browser"
     ],
-    "extra": {
-      "eas": {
-        "projectId": "75c0e70b-23b4-4888-bfe9-cbfdf5293817"
-      }
-    },
-    "owner": "colauncha-team"
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
   }
 }
