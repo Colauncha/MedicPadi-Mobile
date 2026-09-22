@@ -131,12 +131,11 @@ export interface ProfileFields {
   allergies?: string[];
   emergencyContact?: string;
   nextOfKin?: NextOfKin;
-  profilePicture?: {public_id: string; url: string};
+  profilePicture?: { public_id: string; url: string };
   // Doctor-specific
   speciality?: string;
   licenceNumber?: string;
   bio?: string;
-  rating?: number;
   costPerSession?: string;
   sessionLength?: number;
   placeOfWork?: string;
@@ -149,6 +148,10 @@ export interface ProfileFields {
   registrationNumber?: string;
   address?: string;
   isProfileComplete?: boolean;
+
+  // rating
+  rating?: number;
+  totalReviews?: number;
 }
 
 // Shape returned by GET /profile/retrieve
@@ -177,6 +180,11 @@ export interface AppointmentData {
   provider?: ProfileFields;
   patient?: ProfileFields;
   createdAt?: string;
+}
+
+export interface CompleteAppointmentResponse {
+  message: string;
+  success: boolean;
 }
 
 export interface PaymentLinkAppointmentData extends AppointmentData {
@@ -253,6 +261,21 @@ export interface Paginated<T> {
   meta: {count: number, limit: number, page: number, total: number, total_pages: number}
 }
 
+export enum ReviewProfileType {
+  Doctor = 'doctor',
+  Pharmacy = 'pharmacy',
+  Laboratory = 'laboratory',
+}
+
+export interface ReviewResponseData {
+  message: string;
+  rating: number;
+  profile_type: ReviewProfileType;
+  doctor_id?: string | null;
+  pharmacy_id?: string | null;
+  laboratory_id?: string | null;
+}
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
 export const apiRegister = (data: RegisterData) =>
@@ -265,7 +288,22 @@ export const apiLogout = (token: string) =>
   request<void>('GET', '/auth/logout', undefined, token);
 
 export const apiRequestPasswordReset = (email: string) =>
-  request<void>('POST', '/auth/request-password-reset', { email });
+  request<{ message: string }>(
+    'POST',
+    `/auth/request-password-reset?email=${encodeURIComponent(email)}`,
+    { email }
+  );
+
+export const apiResetPassword = (
+  email: string,
+  otp: number,
+  newPassword: string
+) =>
+  request<{ message: string }>('POST', `/auth/reset-password`, {
+    email,
+    otp,
+    newPassword,
+  });
 
 export const apiSendVerificationEmail = (token: string) =>
   request<void>('POST', '/auth/send-verification-mail', undefined, token);
@@ -359,6 +397,14 @@ export const apiGetZoomSignature = (id: string, token: string) =>
   request<ZoomSignatureResponse>(
     'GET',
     `/orders/appointments/${id}/signature`,
+    undefined,
+    token
+  );
+
+export const apiCompleteAppointment = (id: string, token: string) =>
+  request<CompleteAppointmentResponse>(
+    'GET',
+    `/orders/appointments/${id}/complete`,
     undefined,
     token
   );
@@ -461,3 +507,11 @@ export const apiVerifyTransaction = (
   reference: string,
   token: string,
 ) => request<TransactionVerifyResponse>('GET', `/transactions/verify/${reference}`, undefined, token)
+
+// ── Reviews ─────────────────────────────────────────────────────────
+
+export const apiSubmitReview = (
+  id: string,
+  data: ReviewResponseData,
+  token: string,
+) => request<ReviewResponseData>('GET', `/profile/reviews/${id}`, data, token);

@@ -199,7 +199,9 @@ export const DashboardScreen: React.FC = () => {
     <SafeAreaView style={styles.container}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
         {/* ── Blue banner ── */}
         <View style={styles.banner}>
@@ -212,16 +214,28 @@ export const DashboardScreen: React.FC = () => {
                 style={styles.iconBtn}
                 onPress={() => navigation.navigate('Notifications')}
               >
-                <MaterialIcons name="notifications" size={22} color={colors.text.medium} />
+                <MaterialIcons
+                  name="notifications"
+                  size={22}
+                  color={colors.text.medium}
+                />
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.iconBtn}
                 onPress={() => navigation.navigate('Profile')}
               >
-                { profile?.profile?.profilePicture?.url ?
-                  <Image source={{ uri: profile.profile.profilePicture!.url }} style={styles.avatar} /> :
-                  <MaterialIcons name="person" size={22} color={colors.text.dark} />
-                }
+                {profile?.profile?.profilePicture?.url ? (
+                  <Image
+                    source={{ uri: profile.profile.profilePicture!.url }}
+                    style={styles.avatar}
+                  />
+                ) : (
+                  <MaterialIcons
+                    name="person"
+                    size={22}
+                    color={colors.text.dark}
+                  />
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -242,10 +256,16 @@ export const DashboardScreen: React.FC = () => {
                   onPress={() => navigation.navigate(stat.to as any)}
                 >
                   <View style={styles.statArrow}>
-                    <MaterialIcons name="arrow-forward" size={12} color={colors.primary[950]} />
+                    <MaterialIcons
+                      name="arrow-forward"
+                      size={12}
+                      color={colors.primary[950]}
+                    />
                   </View>
                   <View>
-                    <Text style={styles.statValue}>{loading ? '—' : stat.value}</Text>
+                    <Text style={styles.statValue}>
+                      {loading ? '—' : stat.value}
+                    </Text>
                     <Text style={styles.statLabel}>{stat.label}</Text>
                   </View>
                 </TouchableOpacity>
@@ -264,7 +284,11 @@ export const DashboardScreen: React.FC = () => {
             >
               <View style={styles.quickTop}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <MaterialIcons name="calendar-today" size={20} color={colors.text.medium} />
+                  <MaterialIcons
+                    name="calendar-today"
+                    size={20}
+                    color={colors.text.medium}
+                  />
                   <Text style={styles.quickCardLabel}>Appointment</Text>
                 </View>
                 <View>
@@ -273,7 +297,11 @@ export const DashboardScreen: React.FC = () => {
               </View>
               <View style={styles.quickBtn}>
                 <Text style={styles.quickBtnText}>Book</Text>
-                <MaterialIcons name="arrow-forward-ios" size={12} color={colors.text.white} />
+                <MaterialIcons
+                  name="arrow-forward-ios"
+                  size={12}
+                  color={colors.text.white}
+                />
               </View>
             </TouchableOpacity>
 
@@ -283,7 +311,11 @@ export const DashboardScreen: React.FC = () => {
             >
               <View style={styles.quickTop}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <MaterialIcons name="assignment" size={20} color={colors.text.medium} />
+                  <MaterialIcons
+                    name="assignment"
+                    size={20}
+                    color={colors.text.medium}
+                  />
                   <Text style={styles.quickCardLabel}>Reports</Text>
                 </View>
                 <View>
@@ -292,7 +324,11 @@ export const DashboardScreen: React.FC = () => {
               </View>
               <View style={styles.quickBtn}>
                 <Text style={styles.quickBtnText}>View</Text>
-                <MaterialIcons name="arrow-forward-ios" size={12} color={colors.text.white} />
+                <MaterialIcons
+                  name="arrow-forward-ios"
+                  size={12}
+                  color={colors.text.white}
+                />
               </View>
             </TouchableOpacity>
           </View>
@@ -300,8 +336,10 @@ export const DashboardScreen: React.FC = () => {
           {/* Upcoming Appointment */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Upcoming Appointment</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Appointment' as any)}>
+              <Text style={styles.sectionTitle}>Upcoming/Recent Appointment</Text>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Appointment' as any)}
+              >
                 <Text style={styles.viewAll}>View All</Text>
               </TouchableOpacity>
             </View>
@@ -313,20 +351,30 @@ export const DashboardScreen: React.FC = () => {
                 <View style={styles.apptDoctorRow}>
                   <View style={styles.apptDocInfo}>
                     {!upcomingApptDoc?.profile ? (
-                      <View style={styles.apptAvatar}>
-                        </View> ) :
-                        <Image
-                          source={{ uri: upcomingApptDoc?.profile?.profilePicture?.url }}
-                          style={styles.apptImg}
-                        />
-                    }
+                      <View style={styles.apptAvatar}></View>
+                    ) : (
+                      <Image
+                        source={{
+                          uri: upcomingApptDoc?.profile?.profilePicture?.url,
+                        }}
+                        style={styles.apptImg}
+                      />
+                    )}
                     <View>
-                      <Text style={styles.apptDocName}>{providerName(upcomingApptDoc)}</Text>
-                      <Text style={styles.apptDocSpec}>{providerSpecialty(upcomingApptDoc)}</Text>
+                      <Text style={styles.apptDocName}>
+                        {providerName(upcomingApptDoc)}
+                      </Text>
+                      <Text style={styles.apptDocSpec}>
+                        {providerSpecialty(upcomingApptDoc)}
+                      </Text>
                     </View>
                   </View>
                   <View style={styles.chatBtn}>
-                    <MaterialIcons name="chat" size={18} color={colors.text.medium} />
+                    <MaterialIcons
+                      name="chat"
+                      size={18}
+                      color={colors.text.medium}
+                    />
                   </View>
                 </View>
 
@@ -340,7 +388,9 @@ export const DashboardScreen: React.FC = () => {
                   <View style={styles.apptMetaSep} />
                   <View style={styles.apptMetaBox}>
                     <Text style={styles.apptMetaLabel}>Status</Text>
-                    <Text style={styles.apptMetaValue}>{upcomingAppt.status}</Text>
+                    <Text style={styles.apptMetaValue}>
+                      {upcomingAppt.status}
+                    </Text>
                   </View>
                 </View>
 
@@ -359,7 +409,10 @@ export const DashboardScreen: React.FC = () => {
                   <TouchableOpacity
                     style={styles.apptBtnOutline}
                     onPress={() =>
-                      navigation.navigate('BookingDetails', { bookingId: upcomingAppt.id, doctorId: upcomingAppt.provider_id })
+                      navigation.navigate('BookingDetails', {
+                        bookingId: upcomingAppt.id,
+                        doctorId: upcomingAppt.provider_id,
+                      })
                     }
                   >
                     <Text style={styles.apptBtnOutlineText}>View Details</Text>
@@ -384,20 +437,33 @@ export const DashboardScreen: React.FC = () => {
             {loading ? (
               <ActivityIndicator color={colors.primary[950]} />
             ) : doctors.length > 0 ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.doctorsScroll}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.doctorsScroll}
+              >
                 {doctors.map((doc) => (
                   <TouchableOpacity
                     key={doc.id ?? doc.user_id}
                     style={styles.docCard}
                     onPress={() =>
-                      navigation.navigate('DoctorDetails', {doctorId: doc.user_id})
+                      navigation.navigate('DoctorDetails', {
+                        doctorId: doc.user_id,
+                      })
                     }
                   >
                     <View style={styles.docImage}>
-                      {doc?.profilePicture?.url ? 
-                      <Image source={{ uri: doc?.profilePicture?.url}} style={styles.docProfileImage}/> :
-                      <AvatarFromString input={(doc.firstName) || 'Doctor'} size={100} />
-                      }
+                      {doc?.profilePicture?.url ? (
+                        <Image
+                          source={{ uri: doc?.profilePicture?.url }}
+                          style={styles.docProfileImage}
+                        />
+                      ) : (
+                        <AvatarFromString
+                          input={doc.firstName || 'Doctor'}
+                          size={100}
+                        />
+                      )}
                     </View>
                     <View style={styles.docInfo}>
                       <Text style={styles.docName}>
@@ -407,8 +473,12 @@ export const DashboardScreen: React.FC = () => {
                         {doc.speciality ?? 'General Practitioner'}
                       </Text>
                       <View style={styles.docRatingRow}>
-                        <MaterialIcons name="star" size={12} color={colors.primary[900]} />
-                        <Text style={styles.docRating}>{doc.rating?.toFixed(1) ?? '—'}</Text>
+                        <MaterialIcons
+                          name="star"
+                          size={12}
+                          color={colors.primary[900]}
+                        />
+                        <Text style={styles.docRating}>{doc.rating}</Text>
                       </View>
                     </View>
                   </TouchableOpacity>
@@ -425,30 +495,52 @@ export const DashboardScreen: React.FC = () => {
             {loading ? (
               <ActivityIndicator color={colors.primary[950]} />
             ) : pharma.length > 0 ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.doctorsScroll}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.doctorsScroll}
+              >
                 {pharma.map((pharm) => (
                   <TouchableOpacity
                     key={pharm.id ?? pharm.user_id}
                     style={styles.docCard}
                     onPress={() =>
-                      navigation.navigate('DoctorDetails', {doctorId: pharm.user_id})
+                      navigation.navigate('DoctorDetails', {
+                        doctorId: pharm.user_id,
+                      })
                     }
                   >
                     <View style={styles.docImage}>
-                      {pharm?.profilePicture?.url ? <Image source={{ uri: pharm?.profilePicture?.url}} style={styles.docProfileImage}/> : 
-                        <AvatarFromString input={(pharm.firstName) || 'Pharmacy'} size={100}/>
-                      }
+                      {pharm?.profilePicture?.url ? (
+                        <Image
+                          source={{ uri: pharm?.profilePicture?.url }}
+                          style={styles.docProfileImage}
+                        />
+                      ) : (
+                        <AvatarFromString
+                          input={pharm.firstName || 'Pharmacy'}
+                          size={100}
+                        />
+                      )}
                     </View>
                     <View style={styles.docInfo}>
                       <Text style={styles.docName}>
                         {pharm.name ?? 'Pharmacy'}
                       </Text>
                       <Text style={styles.docSpecialty} numberOfLines={1}>
-                        {pharm.bio && pharm.bio?.length > 20 ? pharm.bio?.slice(0, 20) + '…' : pharm.bio ?? 'Drug Store'}
+                        {pharm.bio && pharm.bio?.length > 20
+                          ? pharm.bio?.slice(0, 20) + '…'
+                          : (pharm.bio ?? 'Drug Store')}
                       </Text>
                       <View style={styles.docRatingRow}>
-                        <MaterialIcons name="star" size={12} color={colors.primary[900]} />
-                        <Text style={styles.docRating}>{pharm.rating?.toFixed(1) ?? '—'}</Text>
+                        <MaterialIcons
+                          name="star"
+                          size={12}
+                          color={colors.primary[900]}
+                        />
+                        <Text style={styles.docRating}>
+                          {pharm.rating}
+                        </Text>
                       </View>
                     </View>
                   </TouchableOpacity>
@@ -465,30 +557,52 @@ export const DashboardScreen: React.FC = () => {
             {loading ? (
               <ActivityIndicator color={colors.primary[950]} />
             ) : labs.length > 0 ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.doctorsScroll}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.doctorsScroll}
+              >
                 {labs.map((lab) => (
                   <TouchableOpacity
                     key={lab.id ?? lab.user_id}
                     style={styles.docCard}
                     onPress={() =>
-                      navigation.navigate('DoctorDetails', {doctorId: lab.user_id})
+                      navigation.navigate('DoctorDetails', {
+                        doctorId: lab.user_id,
+                      })
                     }
                   >
                     <View style={styles.docImage}>
-                      {lab?.profilePicture?.url ? <Image source={{ uri: lab?.profilePicture?.url}} style={styles.docProfileImage}/> : 
-                        <AvatarFromString input={(lab.name) || 'Laboratory'} size={100}/>
-                      }
+                      {lab?.profilePicture?.url ? (
+                        <Image
+                          source={{ uri: lab?.profilePicture?.url }}
+                          style={styles.docProfileImage}
+                        />
+                      ) : (
+                        <AvatarFromString
+                          input={lab.name || 'Laboratory'}
+                          size={100}
+                        />
+                      )}
                     </View>
                     <View style={styles.docInfo}>
                       <Text style={styles.docName}>
                         {lab.name ?? 'Laboratory'}
                       </Text>
                       <Text style={styles.docSpecialty} numberOfLines={1}>
-                        {lab.bio && lab.bio?.length > 20 ? lab.bio?.slice(0, 20) + '…' : lab.bio ?? 'Laboratory'}
+                        {lab.bio && lab.bio?.length > 20
+                          ? lab.bio?.slice(0, 20) + '…'
+                          : (lab.bio ?? 'Laboratory')}
                       </Text>
                       <View style={styles.docRatingRow}>
-                        <MaterialIcons name="star" size={12} color={colors.primary[900]} />
-                        <Text style={styles.docRating}>{lab.rating?.toFixed(1) ?? '—'}</Text>
+                        <MaterialIcons
+                          name="star"
+                          size={12}
+                          color={colors.primary[900]}
+                        />
+                        <Text style={styles.docRating}>
+                          {lab.rating}
+                        </Text>
                       </View>
                     </View>
                   </TouchableOpacity>
@@ -508,12 +622,21 @@ export const DashboardScreen: React.FC = () => {
               recentAppts.map(async (appt) => (
                 <View key={appt.id} style={styles.activityCard}>
                   <View style={styles.activityIconBox}>
-                    <MaterialIcons name="calendar-today" size={20} color={colors.text.dark} />
+                    <MaterialIcons
+                      name="calendar-today"
+                      size={20}
+                      color={colors.text.dark}
+                    />
                   </View>
                   <View style={styles.activityInfo}>
-                    <Text style={styles.activityTitle}>Appointment completed</Text>
+                    <Text style={styles.activityTitle}>
+                      Appointment completed
+                    </Text>
                     <Text style={styles.activitySub}>
-                      {providerName(await providerData(appt.provider_id, 'consultant'))} · {formatApptTime(appt.appointment_time)}
+                      {providerName(
+                        await providerData(appt.provider_id, 'consultant')
+                      )}{' '}
+                      · {formatApptTime(appt.appointment_time)}
                     </Text>
                   </View>
                 </View>

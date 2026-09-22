@@ -32,8 +32,8 @@ import { PatientStackParamList } from '../../navigation/types';
 import { Button } from '../../components/Button';
 import { truncate } from '../../utils';
 
-type Nav = NativeStackNavigationProp<PatientStackParamList>;
-type Route = RouteProp<PatientStackParamList, 'BookingDetails'>;
+export type Nav = NativeStackNavigationProp<PatientStackParamList>;
+export type Route = RouteProp<PatientStackParamList, 'BookingDetails'>;
 
 const BANNER_CONFIG: Record<string, any> = {
   confirmed: {
@@ -162,10 +162,10 @@ export const BookingDetailsScreen = () => {
     }
   }, [appt]);
 
-  // useEffect(() => {
-  //   // console.log('Doctor:', doctor);
-  //   console.log('Appointment:', appt);
-  // }, [doctor, appt]);
+  useEffect(() => {
+    console.log('Doctor:', doctor);
+    // console.log('Appointment:', appt);
+  }, [doctor, appt]);
 
   const fullName = doctor
     ? [doctor.firstName, doctor.lastName].filter(Boolean).join(' ')
@@ -220,6 +220,17 @@ export const BookingDetailsScreen = () => {
         <Header title="My Appointment" />
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.primary[950]} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Header title="My Appointment" />
+        <View style={styles.center}>
+          <Text>{error}</Text>
         </View>
       </SafeAreaView>
     );
@@ -420,6 +431,23 @@ export const BookingDetailsScreen = () => {
               />
             </View>
           </View>
+          {/* {appt?.status === 'completed' && ( */}
+          {appt?.status && (
+            <View style={{ marginBottom: spacing.base }}>
+              <Button
+                label="Reports and Review"
+                onPress={() =>
+                  navigation.navigate('CompleteAppointment', {
+                    id: appt.id,
+                    doctorId: appt?.provider_id,
+                  })
+                }
+                loading={loading}
+                disabled={!appt?.provider_id}
+                style={styles.rescheduleBtn}
+              />
+            </View>
+          )}
 
           {/* Uploaded Files */}
           <View style={styles.card}>
@@ -585,7 +613,7 @@ export const BookingDetailsScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+export const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { padding: spacing.base, paddingBottom: 48 },

@@ -16,7 +16,11 @@ export const AppNavigator = () => {
   }
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
       {token ? (
         <Stack.Screen name="Patient" component={PatientNavigator} />
       ) : (

@@ -17,7 +17,10 @@ import {
 import { colors, spacing, typography } from '../../theme';
 import { Button } from '../../components/Button';
 import { useAuth } from '../../context/AuthContext';
-import { apiGetZoomSignature } from '../../services/api';
+import {
+  apiGetZoomSignature,
+  apiCompleteAppointment,
+} from '../../services/api';
 import { PatientStackParamList } from '../../navigation/types';
 
 type Nav = NativeStackNavigationProp<PatientStackParamList>;
@@ -34,10 +37,14 @@ const ZoomMeetingContent = ({
   meetingNumber,
   meetingPassword,
   userName,
+  appointmentId,
+  token,
 }: {
   meetingNumber: string;
   meetingPassword?: string;
   userName: string;
+  appointmentId: string;
+  token: string;
 }) => {
   const navigation = useNavigation<Nav>();
   const zoom = useZoom();
@@ -73,9 +80,14 @@ const ZoomMeetingContent = ({
 
     const stateSub = addZoomEventListener(
       'onMeetingStateChange',
-      ({ state }) => {
+      async ({ state }) => {
         if (MEETING_ENDED_STATES.includes(state)) {
-          navigation.goBack();
+          const res = await apiCompleteAppointment(appointmentId, token);
+          if (res.success) {
+            navigation.navigate('CompleteAppointment', {
+              id: appointmentId,
+            });
+          } else navigation.goBack();
         }
       }
     );
@@ -167,6 +179,8 @@ export const ZoomMeetingScreen = () => {
             meetingNumber={meetingNumber}
             meetingPassword={meetingPassword}
             userName={userName}
+            appointmentId={appointmentId || ''}
+            token={token || ''}
           />
         </ZoomSDKProvider>
       )}

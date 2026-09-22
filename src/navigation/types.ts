@@ -15,6 +15,12 @@ export type PatientTabParamList = {
   Settings: undefined;
 };
 
+export enum SourceProviderEnum {
+  DOCTOR = 'doctor',
+  PHARMACY = 'pharmacy',
+  LAB = 'lab',
+}
+
 export type PatientStackParamList = {
   PatientTabs: undefined;
   BookAppointment: { doctorName?: string; providerId?: string };
@@ -35,7 +41,12 @@ export type PatientStackParamList = {
   VerifyEmail: undefined;
   Speciality: undefined;
   DoctorsBySpeciality: { speciality: string; label: string };
-  PaymentWebView: { url: string; reference?: string };
+  PaymentWebView: {
+    url: string;
+    reference?: string;
+    source?: SourceProviderEnum;
+  };
+  CompleteAppointment: { id?: string; doctorId?: string };
   ZoomMeeting: {
     appointmentId: string;
     meetingNumber: string;

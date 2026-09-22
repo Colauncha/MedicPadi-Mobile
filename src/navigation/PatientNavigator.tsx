@@ -24,6 +24,9 @@ import { DoctorsBySpecialityScreen } from '../screens/patient/DoctorsBySpecialit
 import { BookingDetailsScreen } from '../screens/patient/BookingDetailsScreen';
 import { PaymentWebViewScreen } from '../screens/patient/PaymentWebViewScreen';
 import { ZoomMeetingScreen } from '../screens/patient/ZoomMeetingScreen';
+import { CompleteAppointmentScreen } from '../screens/patient/CompleteAppointmentScreen';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LayoutAnimation } from 'react-native';
 
 const Tab = createBottomTabNavigator<PatientTabParamList>();
 const Stack = createNativeStackNavigator<PatientStackParamList>();
@@ -37,35 +40,79 @@ const TAB_CONFIG: Record<string, { icon: TabIconName; label: string }> = {
   Settings: { icon: 'settings', label: 'Settings' },
 };
 
-const PatientTabs = () => (
-  <Tab.Navigator
-    screenOptions={({ route }) => ({
-      headerShown: false,
-      tabBarStyle: styles.tabBar,
-      tabBarShowLabel: false,
-      tabBarIcon: ({ focused }) => {
-        const cfg = TAB_CONFIG[route.name];
-        return (
-          <View style={[styles.tabItem, focused && styles.tabItemActive]}>
-            <MaterialIcons
-              name={cfg.icon}
-              size={22}
-              color={focused ? colors.text.white : colors.text.medium}
-            />
-            <Text style={[styles.tabLabel, focused && styles.tabLabelActive]}>
-              {cfg.label}
-            </Text>
-          </View>
-        );
-      },
-    })}
-  >
-    <Tab.Screen name="Home" component={DashboardScreen} />
-    <Tab.Screen name="Appointment" component={AppointmentsScreen} />
-    <Tab.Screen name="Pharmacy" component={PharmacyScreen} />
-    <Tab.Screen name="Settings" component={SettingsScreen} />
-  </Tab.Navigator>
-);
+const PatientTabs = () => {
+  const insets = useSafeAreaInsets();
+
+  const bottomOffset = Math.max(insets.bottom, 12) + 12;
+
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+
+        tabBarStyle: [
+          styles.tabBar,
+          { bottom: bottomOffset },
+          bottomOffset >= 30 && {
+            height: 72,
+            paddingVertical: 2,
+          },
+        ],
+        tabBarShowLabel: false,
+
+        tabBarItemStyle: {
+          flex: 1,
+          height: '100%',
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+
+        tabBarIconStyle: {
+          width: '100%',
+          height: '100%',
+          margin: 0,
+        },
+
+        tabBarIcon: ({ focused }) => {
+          const cfg = TAB_CONFIG[route.name];
+
+          return (
+            <View
+              style={[
+                styles.tabItem,
+                focused && styles.tabItemActive,
+                bottomOffset >= 30 && {
+                  position: 'absolute',
+                  height: 60,
+                  borderRadius: 30,
+                  marginBottom: -48,
+                },
+              ]}
+            >
+              <MaterialIcons
+                name={cfg.icon}
+                size={22}
+                color={focused ? colors.text.white : colors.text.medium}
+              />
+
+              <Text
+                style={[styles.tabLabel, focused && styles.tabLabelActive]}
+                numberOfLines={1}
+              >
+                {cfg.label}
+              </Text>
+            </View>
+          );
+        },
+      })}
+    >
+      <Tab.Screen name="Home" component={DashboardScreen} />
+      <Tab.Screen name="Appointment" component={AppointmentsScreen} />
+      <Tab.Screen name="Pharmacy" component={PharmacyScreen} />
+      <Tab.Screen name="Settings" component={SettingsScreen} />
+    </Tab.Navigator>
+  );
+};
 
 export const PatientNavigator = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -81,8 +128,15 @@ export const PatientNavigator = () => (
     <Stack.Screen name="DoctorDetails" component={DoctorProfileScreen} />
     <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
     <Stack.Screen name="Speciality" component={SpecialityScreen} />
-    <Stack.Screen name="DoctorsBySpeciality" component={DoctorsBySpecialityScreen} />
+    <Stack.Screen
+      name="DoctorsBySpeciality"
+      component={DoctorsBySpecialityScreen}
+    />
     <Stack.Screen name="PaymentWebView" component={PaymentWebViewScreen} />
+    <Stack.Screen
+      name="CompleteAppointment"
+      component={CompleteAppointmentScreen}
+    />
     <Stack.Screen
       name="ZoomMeeting"
       component={ZoomMeetingScreen}
@@ -93,36 +147,54 @@ export const PatientNavigator = () => (
 
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: colors.purple[100],  // Figma: fill=#f1eff8
-    borderTopWidth: 0,
-    marginTop: -50,
-    height: 120,
-    paddingBottom: 60,
-    elevation: 2,
-    shadowOpacity: 0,
-    display: 'flex',
-    flexDirection: 'row',
-    alignItems: 'center',
+    position: 'relative',
+    left: 20,
+    right: 20,
+
+    borderRadius: 36,
+
+    backgroundColor: colors.purple[100],
+    borderWidth: 1,
+    borderColor: colors.purple[300],
+
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+
+    elevation: 8,
+
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
   },
+
   tabItem: {
+    width: '100%',
+    height: '100%',
+
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 5,
-    paddingVertical: 6,
-    borderRadius: 10,
-    // borderWidth: 1,
-    gap: 2,
-    minWidth: 70,
-    height: 60,
+
+    marginBottom: -10,
+    // paddingVertical: 4,
+    borderRadius: 28,
+    gap: 4,
   },
+
   tabItemActive: {
-    backgroundColor: colors.primary[950],  // Figma: fill=#140c5e
+    backgroundColor: colors.primary[950],
   },
+
   tabLabel: {
-    fontFamily: typography.fonts.regular,
+    fontFamily: typography.fonts.bold,
     fontSize: typography.sizes.xs,
     color: colors.text.medium,
+    textAlign: 'center',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
+
   tabLabelActive: {
     color: colors.text.white,
   },
