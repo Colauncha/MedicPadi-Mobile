@@ -54,7 +54,7 @@ const ZoomMeetingContent = ({
   useEffect(() => {
     const authSub = addZoomEventListener(
       'onAuthReturn',
-      async ({ error: authError }) => {
+      async ({ error: authError }: { error: string }) => {
         if (!AUTH_SUCCESS_CODES.includes(authError)) {
           setError(
             'Failed to authorize the meeting session. Please try again.'
@@ -80,7 +80,7 @@ const ZoomMeetingContent = ({
 
     const stateSub = addZoomEventListener(
       'onMeetingStateChange',
-      async ({ state }) => {
+      async ({ state }: { state: string }) => {
         if (MEETING_ENDED_STATES.includes(state)) {
           const res = await apiCompleteAppointment(appointmentId, token);
           if (res.success) {
@@ -94,7 +94,7 @@ const ZoomMeetingContent = ({
 
     const errorSub = addZoomEventListener(
       'onMeetingError',
-      ({ error: meetingError }) => {
+      ({ error: meetingError }: { error: string }) => {
         setError(`Meeting error: ${meetingError}`);
       }
     );
