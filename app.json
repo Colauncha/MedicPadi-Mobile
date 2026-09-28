@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "MedicPadi-mobile",
-    "slug": "MedicPadi-mobile",
+    "name": "MedicPadi",
+    "slug": "medicpadi-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -9,17 +9,24 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.colauncha.medicpadi",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Choose a profile picture from your photo library.",
+        "NSCameraUsageDescription": "MedicPadi needs camera access so you can join video appointments with your doctor.",
+        "NSMicrophoneUsageDescription": "MedicPadi needs microphone access so you can join video appointments with your doctor.",
+        "NSBluetoothPeripheralUsageDescription": "MedicPadi needs Bluetooth access to support Bluetooth headsets during video appointments."
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#000000",
+        "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.Colauncha.MedicPadi"
     },
     "web": {
       "output": "static",
@@ -41,11 +48,27 @@
       ],
       "expo-secure-store",
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      "@react-native-community/datetimepicker",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 28
+          }
+        }
+      ],
+      "./plugins/withZoomAndroidManifest"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "75c0e70b-23b4-4888-bfe9-cbfdf5293817"
+      }
+    },
+    "owner": "colauncha-team"
   }
 }

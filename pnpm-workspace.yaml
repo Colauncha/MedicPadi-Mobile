@@ -1,0 +1,2 @@
+patchedDependencies:
+  '@zoom/meetingsdk-react-native@7.0.5': patches/@zoom__meetingsdk-react-native@7.0.5.patch
