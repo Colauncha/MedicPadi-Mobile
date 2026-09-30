@@ -56,6 +56,16 @@ const MAPPING = {
   'videoprojector.fill': 'video-call',
   'folder.circle.fill': 'attachment',
   'alarm.fill': 'alarm-on',
+  calendar: 'calendar-today',
+  'doc.text.fill': 'assignment',
+  'star.fill': 'star',
+  'bubble.left.fill': 'chat',
+  'bubble.left': 'chat-bubble-outline',
+  star: 'star-border',
+  'phone.fill': 'call',
+  'video.fill': 'videocam',
+  'cross.case.fill': 'local-hospital',
+  clock: 'schedule',
 
   // Medical related
   stethoscope: 'medical-services', // Doctor (Stethoscope on iOS -> Medical Briefcase on Android)

@@ -1,313 +1,5 @@
-// import {
-//   ActivityIndicator,
-//   FlatList,
-//   Image,
-//   StyleSheet,
-//   Text,
-//   TextInput,
-//   TouchableOpacity,
-//   View,
-// } from 'react-native';
-// import { SafeAreaView } from 'react-native-safe-area-context';
-
-// import { IconSymbol } from '@/components/ui/icon-symbol';
-// import { useAuth } from '@/context/AuthContext';
-// import { useThemedStyles } from '@/hooks/useThemedStyle';
-// import {
-//   apiGetAppointments,
-//   AppointmentData,
-//   Paginated,
-//   // getDoctorsPatients,
-// } from '@/services/api';
-// import { useTheme } from '@/theme/ThemeProvider';
-// // import { getAge } from '@/utils/formatter';
-// import { useCallback, useEffect, useRef, useState } from 'react';
-// import { AppointmentCard, AppointmentRequestRow } from '..';
-
-// const PAGE_SIZE = 10;
-
-// type FilterType = 'today' | 'request' | 'past' | 'upcoming' | 'all';
-
-// const useFetchAppointments = () => {
-//   const { token } = useAuth();
-
-//   const [appointments, setAppointments] = useState<AppointmentData[]>([]);
-//   const [page, setPage] = useState(1);
-//   const [totalPages, setTotalPages] = useState(1);
-
-//   const [loading, setLoading] = useState(true);
-//   const [loadingMore, setLoadingMore] = useState(false);
-
-//   const [filterType, setFilterType] = useState<FilterType>('all');
-
-//   // Prevent multiple onEndReached calls from fetching
-//   // the same page simultaneously.
-//   const loadingMoreRef = useRef(false);
-
-//   const fetchPage = useCallback(
-//     async (pageNum: number) => {
-//       // const extraFeield = {
-//       //   ...{appointmentDate: filterType === 'today' ? new Date().toISOString().split('T')[0] : ''},
-//       //   ...{status: filterType === 'request' ? 'request' :  filterType === 'past' ? 'completed' : ''},
-//       // }
-//       if (!token) return;
-
-//       // Prevent duplicate pagination requests.
-//       if (pageNum > 1 && loadingMoreRef.current) {
-//         return;
-//       }
-
-//       if (pageNum === 1) {
-//         setLoading(true);
-//       } else {
-//         loadingMoreRef.current = true;
-//         setLoadingMore(true);
-//       }
-
-//       try {
-//         let res: Paginated<AppointmentData>;
-//         if (filterType === 'today'){
-//           res = await apiGetAppointments(
-//             {
-//               page: pageNum,
-//               limit: PAGE_SIZE,
-//             },
-//             token
-//           );
-//         }
-//         const items = Array.isArray(res.data) ? res.data : [];
-
-//         setTotalPages(res.meta?.total_pages ?? 1);
-
-//         setAppointments((prev) =>
-//           pageNum === 1 ? items : [...prev, ...items]
-//         );
-
-//         setPage(pageNum);
-//       } catch (error) {
-//         console.error('Failed to fetch appointments:', error);
-//       } finally {
-//         if (pageNum === 1) {
-//           setLoading(false);
-//         } else {
-//           setLoadingMore(false);
-//           loadingMoreRef.current = false;
-//         }
-//       }
-//     },
-//     [token]
-//   );
-
-//   useEffect(() => {
-//     if (!token) {
-//       return;
-//     }
-
-//     const timeoutId = setTimeout(() => {
-//       void fetchPage(1);
-//     }, 0);
-
-//     return () => clearTimeout(timeoutId);
-//   }, [token, fetchPage]);
-
-//   const loadMore = useCallback(() => {
-//     if (loadingMoreRef.current || loadingMore || page >= totalPages) {
-//       return;
-//     }
-
-//     fetchPage(page + 1);
-//   }, [fetchPage, loadingMore, page, totalPages]);
-
-//   return {
-//     appointments,
-//     loading: token ? loading : false,
-//     loadingMore,
-//     page,
-//     totalPages,
-//     filterType,
-//     setFilterType,
-//     loadMore,
-//     refresh: () => fetchPage(1),
-//   };
-// };
-
-// export default function Appointments() {
-//   const { theme: appTheme } = useTheme();
-
-//   const { appointments, loading, loadingMore, filterType, setFilterType, loadMore, refresh } =
-//     useFetchAppointments();
-
-//   const styles = useThemedStyles((theme) =>
-//     StyleSheet.create({
-//       container: {
-//         flex: 1,
-//         backgroundColor: theme.colors.background,
-//       },
-
-//       search: {
-//         flexDirection: 'row',
-//         padding: theme.spacing.md,
-//         alignItems: 'center',
-//         justifyContent: 'space-between',
-//         borderWidth: 1,
-//         borderColor: theme.colors.border,
-//         margin: theme.spacing.md,
-//         borderRadius: theme.radius.xl,
-//         position: 'relative',
-//       },
-
-//       searchInput: {
-//         width: '100%',
-//         color: theme.colors.text,
-//         fontFamily: theme.typography.fonts?.sans,
-//         fontSize: theme.typography.sizes.md,
-//       },
-
-//       searchIcon: {
-//         position: 'absolute',
-//         right: 10,
-//       },
-
-//       list: {
-//         padding: theme.spacing.base,
-//         paddingBottom: 32,
-//       },
-
-//       card: {
-//         flexDirection: 'row',
-//         alignItems: 'center',
-//         backgroundColor: theme.colors.surfaceCardLight,
-//         borderRadius: theme.radius.lg,
-//         padding: theme.spacing.md,
-//         marginBottom: theme.spacing.md,
-//         borderWidth: 1,
-//         borderColor: theme.colors.border,
-//         gap: theme.spacing.md,
-//       },
-
-//       avatar: {
-//         width: 56,
-//         height: 56,
-//         borderRadius: 28,
-//         overflow: 'hidden',
-//         backgroundColor: theme.colors.surface,
-//       },
-
-//       avatarImg: {
-//         width: 56,
-//         height: 56,
-//         borderRadius: 28,
-//       },
-
-//       info: {
-//         flex: 1,
-//       },
-
-//       name: {
-//         fontFamily: theme.typography.fonts?.sans,
-//         fontSize: theme.typography.sizes.base,
-//         color: theme.colors.textSecondary,
-//         marginBottom: 2,
-//       },
-
-//       speciality: {
-//         fontFamily: theme.typography.fonts?.sans,
-//         fontSize: theme.typography.sizes.sm,
-//         color: theme.colors.textMuted,
-//         marginBottom: 4,
-//         textTransform: 'capitalize',
-//       },
-
-//       loadMoreSpinner: {
-//         marginVertical: theme.spacing.lg,
-//       },
-
-//       emptyContainer: {
-//         alignItems: 'center',
-//         marginTop: 64,
-//         gap: theme.spacing.md,
-//       },
-
-//       emptyText: {
-//         fontFamily: theme.typography.fonts?.sans,
-//         fontSize: theme.typography.sizes.base,
-//         color: theme.colors.textMuted,
-//         textAlign: 'center',
-//       },
-//     })
-//   );
-
-//   const renderAppointments = useCallback(
-//     ({ item }: { item: AppointmentData }) => {
-//       // const name =
-//       //   [item.firstName, item.lastName].filter(Boolean).join(' ') || 'Patient';
-
-//       if (filterType === 'request') {
-//         return <AppointmentRequestRow theme={appTheme} appointment={item} onAccept={() => {}} onDecline={() => {}}/>
-//       } else if (filterType === 'today') {
-//         return <AppointmentCard theme={appTheme} appointment={item} />
-//       }
-//     },
-//     [appTheme, filterType]
-//   );
-
-//   return (
-//     <SafeAreaView style={styles.container}>
-//       <View style={styles.search}>
-//         <TextInput
-//           placeholder="Search Patients"
-//           placeholderTextColor={appTheme.colors.textMuted}
-//           keyboardType="default"
-//           style={styles.searchInput}
-//         />
-//         <IconSymbol
-//           name={'magnifyingglass'}
-//           size={20}
-//           color={appTheme.colors.textMuted}
-//           style={styles.searchIcon}
-//         />
-//       </View>
-//       {loading ? (
-//         <ActivityIndicator
-//           style={{ flex: 1 }}
-//           color={appTheme.colors.primary.extraDeep}
-//         />
-//       ) : (
-//         <FlatList
-//           data={appointments}
-//           keyExtractor={(item, index) => item.id ?? item.id ?? String(index)}
-//           renderItem={renderAppointments}
-//           contentContainerStyle={styles.list}
-//           showsVerticalScrollIndicator={false}
-//           refreshing={loading}
-//           onRefresh={refresh}
-//           onEndReached={loadMore}
-//           onEndReachedThreshold={0.3}
-//           ListFooterComponent={
-//             loadingMore ? (
-//               <ActivityIndicator
-//                 style={styles.loadMoreSpinner}
-//                 color={appTheme.colors.primary.extraDeep}
-//               />
-//             ) : null
-//           }
-//           ListEmptyComponent={
-//             <View style={styles.emptyContainer}>
-//               <IconSymbol
-//                 name="person.2.fill"
-//                 size={48}
-//                 color={appTheme.colors.textMuted}
-//               />
-
-//               <Text style={styles.emptyText}>No patients found</Text>
-//             </View>
-//           }
-//         />
-//       )}
-//     </SafeAreaView>
-//   );
-// }
-
+import { useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -320,71 +12,96 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
-  AppointmentCard,
-  AppointmentRequestRow,
+  doctorDisplayName,
+  PatientAppointmentCard,
 } from '@/components/appointmentCards/AppointmentCards';
+import SpecialityGrid from '@/components/SpecialityGrid';
+import { Button } from '@/components/ui/Button';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/context/AuthContext';
 import { useThemedStyles } from '@/hooks/useThemedStyle';
 import {
   apiGetAppointments,
-  apiListProfiles,
+  apiGetProfileById,
   AppointmentData,
-  Paginated,
   ProfileFields,
 } from '@/services/api';
 import { useTheme } from '@/theme/ThemeProvider';
-import { useCallback, useEffect, useRef, useState } from 'react';
 
 const PAGE_SIZE = 10;
+const UPCOMING_LIMIT = 50;
 
-type FilterType = 'today' | 'request' | 'past' | 'upcoming' | 'all';
+type Segment = 'appointments' | 'doctors';
+
+const SEGMENTS: { key: Segment; label: string }[] = [
+  { key: 'appointments', label: 'Appointments' },
+  { key: 'doctors', label: 'Doctors' },
+];
+
+type FilterType = 'all' | 'today' | 'upcoming';
 
 const FILTERS: { key: FilterType; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'today', label: 'Today' },
-  { key: 'request', label: 'Requests' },
   { key: 'upcoming', label: 'Upcoming' },
-  { key: 'past', label: 'Past' },
 ];
 
-// Builds the extra query params for each filter.
-// Only 'today' and 'request' are wired up for now — extend this
-// as the API adds support for 'past' / 'upcoming'.
-const getFilterParams = (filterType: FilterType) => {
-  switch (filterType) {
-    case 'today':
-      return { appointmentTime: new Date().toISOString().split('T')[0] };
-    case 'request':
-      return { status: 'pending' };
-    case 'past':
-      return { status: 'completed', paymentStatus: 'payment_confimed' };
-    case 'upcoming':
-      return { status: 'confirmed', paymentStatus: 'payment_confimed' };
-    default:
-      return { status: '' };
-  }
-};
+const listOf = (res: PromiseSettledResult<{ data: AppointmentData[] }>) =>
+  res.status === 'fulfilled' && Array.isArray(res.value.data)
+    ? res.value.data
+    : [];
 
 const useFetchAppointments = () => {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const userId = user?.id ?? '';
 
   const [appointments, setAppointments] = useState<AppointmentData[]>([]);
-  const [patientsById, setPatientsById] = useState<
-    Map<string | undefined, ProfileFields>
-  >(new Map());
+  const [doctorsById, setDoctorsById] = useState<Map<string, ProfileFields>>(
+    new Map()
+  );
 
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [filterType, setFilterType] = useState<FilterType>('all');
+  // When the list was last fetched; cards use it to decide what's upcoming.
+  const [fetchedAt, setFetchedAt] = useState(0);
 
   // Prevent multiple onEndReached calls from fetching
   // the same page simultaneously.
   const loadingMoreRef = useRef(false);
+  // Doctor profiles already resolved, shared across pages and filters.
+  const doctorsRef = useRef(new Map<string, ProfileFields>());
+
+  const resolveDoctors = useCallback(
+    async (items: AppointmentData[]) => {
+      if (!token) return;
+      const cache = doctorsRef.current;
+
+      items.forEach((a) => {
+        if (a.provider && !cache.has(a.provider_id)) {
+          cache.set(a.provider_id, a.provider);
+        }
+      });
+
+      const missing = Array.from(
+        new Set(items.map((a) => a.provider_id).filter((id) => !cache.has(id)))
+      );
+      const results = await Promise.allSettled(
+        missing.map((id) => apiGetProfileById(id, 'consultant', token))
+      );
+      results.forEach((res, i) => {
+        if (res.status === 'fulfilled') cache.set(missing[i], res.value.profile);
+      });
+
+      setDoctorsById(new Map(cache));
+    },
+    [token]
+  );
 
   const fetchPage = useCallback(
     async (pageNum: number, activeFilter: FilterType) => {
@@ -403,41 +120,52 @@ const useFetchAppointments = () => {
       }
 
       try {
-        const res: Paginated<AppointmentData> = await apiGetAppointments(
-          {
-            page: pageNum,
-            limit: PAGE_SIZE,
-            ...getFilterParams(activeFilter),
-          },
-          token
-        );
+        let items: AppointmentData[];
+        const now = Date.now();
+        setFetchedAt(now);
 
-        const items = Array.isArray(res.data) ? res.data : [];
-
-        setTotalPages(res.meta?.total_pages ?? 1);
-
-        setAppointments((prev) =>
-          pageNum === 1 ? items : [...prev, ...items]
-        );
-
-        const patientIds = Array.from(
-          new Set(res.data.map((a) => a.patient_id))
-        );
-
-        if (patientIds.length > 0) {
-          const params = {
-            ids: patientIds.length > 1 ? patientIds : [],
-            id: patientIds.length === 1 ? patientIds[0] : undefined,
-          };
-          const patients = await apiListProfiles(params, token);
-          setPatientsById(
-            new Map(patients.data.map((p: ProfileFields) => [p.id, p]))
-          );
+        if (activeFilter === 'upcoming') {
+          // Pending + confirmed, still in the future, soonest first.
+          const [pendingRes, confirmedRes] = await Promise.allSettled([
+            apiGetAppointments(
+              { id: userId, status: 'pending', limit: UPCOMING_LIMIT },
+              token
+            ),
+            apiGetAppointments(
+              { id: userId, status: 'confirmed', limit: UPCOMING_LIMIT },
+              token
+            ),
+          ]);
+          items = [...listOf(pendingRes), ...listOf(confirmedRes)]
+            .filter((a) => new Date(a.appointment_time).getTime() >= now)
+            .sort(
+              (a, b) =>
+                new Date(a.appointment_time).getTime() -
+                new Date(b.appointment_time).getTime()
+            );
+          setTotalPages(1);
+          setAppointments(items);
         } else {
-          setPatientsById(new Map());
+          const res = await apiGetAppointments(
+            {
+              id: userId,
+              page: pageNum,
+              limit: PAGE_SIZE,
+              ...(activeFilter === 'today'
+                ? { appointmentTime: new Date().toISOString().split('T')[0] }
+                : {}),
+            },
+            token
+          );
+          items = Array.isArray(res.data) ? res.data : [];
+          setTotalPages(res.meta?.total_pages ?? 1);
+          setAppointments((prev) =>
+            pageNum === 1 ? items : [...prev, ...items]
+          );
         }
 
         setPage(pageNum);
+        await resolveDoctors(items);
       } catch (error) {
         console.error('Failed to fetch appointments:', error);
       } finally {
@@ -449,7 +177,7 @@ const useFetchAppointments = () => {
         }
       }
     },
-    [token]
+    [token, userId, resolveDoctors]
   );
 
   // Refetch from page 1 whenever the filter changes.
@@ -473,66 +201,118 @@ const useFetchAppointments = () => {
     fetchPage(page + 1, filterType);
   }, [fetchPage, loadingMore, page, totalPages, filterType]);
 
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchPage(1, filterType);
+    setRefreshing(false);
+  }, [fetchPage, filterType]);
+
   return {
     appointments,
+    doctorsById,
+    fetchedAt,
     loading: token ? loading : false,
     loadingMore,
-    page,
-    totalPages,
+    refreshing,
     filterType,
-    patientsById,
     setFilterType,
     loadMore,
-    refresh: () => fetchPage(1, filterType),
+    refresh,
   };
 };
 
 export default function Appointments() {
   const { theme: appTheme } = useTheme();
-  // let { status } = useLocalSearchParams<{ status: FilterType | '' }>();
+  const { tab } = useLocalSearchParams<{ tab?: Segment }>();
+  const [segment, setSegment] = useState<Segment>(
+    tab === 'doctors' ? 'doctors' : 'appointments'
+  );
+  const [search, setSearch] = useState('');
 
   const {
     appointments,
+    doctorsById,
+    fetchedAt,
     loading,
     loadingMore,
+    refreshing,
     filterType,
-    patientsById,
     setFilterType,
     loadMore,
     refresh,
   } = useFetchAppointments();
+
+  const visibleAppointments = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return appointments;
+    return appointments.filter((a) => {
+      const doctor = doctorsById.get(a.provider_id);
+      return [
+        doctorDisplayName(doctor),
+        doctor?.speciality,
+        a.description,
+        a.status,
+      ].some((field) => field?.toLowerCase().includes(query));
+    });
+  }, [appointments, doctorsById, search]);
 
   const styles = useThemedStyles((theme) =>
     StyleSheet.create({
       container: {
         flex: 1,
         backgroundColor: theme.colors.background,
-        justifyContent: 'flex-start',
+      },
+
+      segmentBar: {
+        flexDirection: 'row',
+        margin: theme.spacing.md,
+        padding: 4,
+        borderRadius: theme.radius.xl,
+        backgroundColor: theme.colors.surface,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+      },
+
+      segment: {
+        flex: 1,
+        alignItems: 'center',
+        paddingVertical: theme.spacing.sm,
+        borderRadius: theme.radius.xl,
+      },
+
+      segmentActive: {
+        backgroundColor: theme.colors.primary.extraDeep,
+      },
+
+      segmentText: {
+        fontFamily: theme.typography.fonts?.sans,
+        fontSize: theme.typography.sizes.md,
+        fontWeight: '600',
+        color: theme.colors.textMuted,
+      },
+
+      segmentTextActive: {
+        color: theme.colors.buttonText,
       },
 
       search: {
         flexDirection: 'row',
         paddingHorizontal: theme.spacing.sm,
         alignItems: 'center',
-        justifyContent: 'space-between',
         borderWidth: 1,
         borderColor: theme.colors.border,
-        margin: theme.spacing.md,
+        marginHorizontal: theme.spacing.md,
+        marginBottom: theme.spacing.md,
         borderRadius: theme.radius.xl,
-        position: 'relative',
         height: 40,
+        gap: theme.spacing.sm,
       },
 
       searchInput: {
-        width: '100%',
+        flex: 1,
         color: theme.colors.text,
         fontFamily: theme.typography.fonts?.sans,
         fontSize: theme.typography.sizes.sm,
-      },
-
-      searchIcon: {
-        position: 'absolute',
-        right: 10,
       },
 
       filterRow: {
@@ -561,66 +341,27 @@ export default function Appointments() {
         fontFamily: theme.typography.fonts?.sans,
         fontSize: theme.typography.sizes.sm,
         color: theme.colors.textMuted,
-        textTransform: 'capitalize',
       },
 
       pillTextActive: {
-        color: theme.colors.background,
+        color: theme.colors.buttonText,
       },
 
       list: {
         padding: theme.spacing.base,
-        paddingBottom: 32,
-        // borderWidth: 1,
+        paddingBottom: 100,
       },
 
       card: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: theme.colors.surfaceCardLight,
-        borderRadius: theme.radius.lg,
-        padding: theme.spacing.md,
-        marginBottom: theme.spacing.md,
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-        gap: theme.spacing.md,
-      },
-
-      avatar: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        overflow: 'hidden',
-        backgroundColor: theme.colors.surface,
-      },
-
-      avatarImg: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-      },
-
-      info: {
-        flex: 1,
-      },
-
-      name: {
-        fontFamily: theme.typography.fonts?.sans,
-        fontSize: theme.typography.sizes.base,
-        color: theme.colors.textSecondary,
-        marginBottom: 2,
-      },
-
-      speciality: {
-        fontFamily: theme.typography.fonts?.sans,
-        fontSize: theme.typography.sizes.sm,
-        color: theme.colors.textMuted,
-        marginBottom: 4,
-        textTransform: 'capitalize',
+        marginVertical: theme.spacing.sm,
       },
 
       loadMoreSpinner: {
         marginVertical: theme.spacing.lg,
+      },
+
+      bookBtn: {
+        marginTop: theme.spacing.lg,
       },
 
       emptyContainer: {
@@ -635,125 +376,138 @@ export default function Appointments() {
         color: theme.colors.textMuted,
         textAlign: 'center',
       },
-
-      appointmentCards: {
-        // borderWidth: 1,
-        borderRadius: theme.radius.lg,
-        // borderColor: theme.colors.border,
-        marginVertical: theme.spacing.sm,
-        padding: theme.spacing.base,
-        backgroundColor: theme.colors.surfaceCardLight,
-      },
     })
   );
 
-  const renderAppointments = useCallback(
-    ({ item }: { item: AppointmentData }) => {
-      // setFilterType(status && status as FilterType);
-      // status = ''
-      if (filterType === 'request') {
-        return (
-          <AppointmentRequestRow
-            theme={appTheme}
-            appointment={item}
-            patient={patientsById.get(item.patient_id)}
-            extraStyle={styles.appointmentCards}
-            onAccept={() => {}}
-            onDecline={() => {}}
-          />
-        );
-      }
-
-      // 'today', 'upcoming', 'past', 'all' all render as a standard card
-      return (
-        <AppointmentCard
-          theme={appTheme}
-          appointment={item}
-          patient={patientsById.get(item.patient_id)}
-          extraStyle={styles.appointmentCards}
-          // showImage
-          showButton
-          buttonText="View"
-        />
-      );
-    },
-    [appTheme, filterType, styles.appointmentCards, patientsById]
+  const renderAppointment = useCallback(
+    ({ item }: { item: AppointmentData }) => (
+      <PatientAppointmentCard
+        theme={appTheme}
+        appointment={item}
+        doctor={doctorsById.get(item.provider_id)}
+        now={fetchedAt}
+        extraStyle={styles.card}
+      />
+    ),
+    [appTheme, doctorsById, fetchedAt, styles.card]
   );
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.search}>
-        <TextInput
-          placeholder="Search Appointments"
-          placeholderTextColor={appTheme.colors.textMuted}
-          keyboardType="default"
-          style={styles.searchInput}
-        />
-        <IconSymbol
-          name={'magnifyingglass'}
-          size={20}
-          color={appTheme.colors.textMuted}
-          style={styles.searchIcon}
-        />
-      </View>
+  const emptyMessage = search.trim()
+    ? 'No appointments match your search'
+    : filterType === 'today'
+      ? 'No appointments today'
+      : filterType === 'upcoming'
+        ? 'No upcoming appointments'
+        : 'No appointments yet';
 
-      <FlatList
-        horizontal
-        data={FILTERS}
-        style={{ flexGrow: 0 }}
-        keyExtractor={(f) => f.key}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterRow}
-        renderItem={({ item }) => {
-          const active = filterType === item.key;
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={styles.segmentBar}>
+        {SEGMENTS.map((s) => {
+          const active = segment === s.key;
           return (
             <TouchableOpacity
-              style={[styles.pill, active && styles.pillActive]}
-              onPress={() => setFilterType(item.key)}
+              key={s.key}
+              style={[styles.segment, active && styles.segmentActive]}
+              onPress={() => setSegment(s.key)}
             >
-              <Text style={[styles.pillText, active && styles.pillTextActive]}>
-                {item.label}
+              <Text
+                style={[styles.segmentText, active && styles.segmentTextActive]}
+              >
+                {s.label}
               </Text>
             </TouchableOpacity>
           );
-        }}
-      />
+        })}
+      </View>
 
-      {loading ? (
-        <ActivityIndicator
-          style={{ flex: 1 }}
-          color={appTheme.colors.primary.extraDeep}
-        />
+      {segment === 'doctors' ? (
+        <SpecialityGrid />
       ) : (
-        <FlatList
-          data={appointments}
-          keyExtractor={(item, index) => item.id ?? String(index)}
-          renderItem={renderAppointments}
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
-          refreshing={loading}
-          onRefresh={refresh}
-          onEndReached={loadMore}
-          onEndReachedThreshold={0.3}
-          ListFooterComponent={
-            loadingMore ? (
-              <ActivityIndicator
-                style={styles.loadMoreSpinner}
-                color={appTheme.colors.primary.extraDeep}
-              />
-            ) : null
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <IconSymbol
-                name="person.2.fill"
-                size={48}
-                color={appTheme.colors.textMuted}
-              />
-              <Text style={styles.emptyText}>No Appointment yet</Text>
-            </View>
-          }
-        />
+        <>
+          <View style={styles.search}>
+            <TextInput
+              placeholder="Search appointments"
+              placeholderTextColor={appTheme.colors.textMuted}
+              value={search}
+              onChangeText={setSearch}
+              style={styles.searchInput}
+            />
+            <IconSymbol
+              name="magnifyingglass"
+              size={20}
+              color={appTheme.colors.textMuted}
+            />
+          </View>
+
+          <FlatList
+            horizontal
+            data={FILTERS}
+            style={{ flexGrow: 0 }}
+            keyExtractor={(f) => f.key}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterRow}
+            renderItem={({ item }) => {
+              const active = filterType === item.key;
+              return (
+                <TouchableOpacity
+                  style={[styles.pill, active && styles.pillActive]}
+                  onPress={() => setFilterType(item.key)}
+                >
+                  <Text
+                    style={[styles.pillText, active && styles.pillTextActive]}
+                  >
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            }}
+          />
+
+          {loading && !refreshing ? (
+            <ActivityIndicator
+              style={{ flex: 1 }}
+              color={appTheme.colors.primary.extraDeep}
+            />
+          ) : (
+            <FlatList
+              data={visibleAppointments}
+              keyExtractor={(item, index) => item.id ?? String(index)}
+              renderItem={renderAppointment}
+              contentContainerStyle={styles.list}
+              showsVerticalScrollIndicator={false}
+              refreshing={refreshing}
+              onRefresh={refresh}
+              onEndReached={loadMore}
+              onEndReachedThreshold={0.3}
+              ListFooterComponent={
+                <>
+                  {loadingMore && (
+                    <ActivityIndicator
+                      style={styles.loadMoreSpinner}
+                      color={appTheme.colors.primary.extraDeep}
+                    />
+                  )}
+                  <Button
+                    label="Book New Appointment"
+                    onPress={() => setSegment('doctors')}
+                    style={styles.bookBtn}
+                  />
+                </>
+              }
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <IconSymbol
+                    name="calendar"
+                    size={48}
+                    color={appTheme.colors.textMuted}
+                  />
+                  <Text style={styles.emptyText}>{emptyMessage}</Text>
+                </View>
+              }
+            />
+          )}
+        </>
       )}
     </SafeAreaView>
   );

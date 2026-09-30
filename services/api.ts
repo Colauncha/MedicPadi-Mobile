@@ -351,6 +351,30 @@ export interface DoctorStatsResponse {
   };
 }
 
+
+export enum NotificationType {
+  APPOINTMENT = 'appointment',
+  REQUISITION = 'requisition',
+  PRESCRIPTION = 'prescription',
+  PAYMENT = 'payment',
+  SYSTEM = 'system',
+  OTHER = 'other',
+}
+
+export interface NotificationData {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  user_id: string;
+  title: string;
+  body: string;
+  type: NotificationType;
+  source_id: string;
+  channel: string;
+  is_read: boolean;
+  sent_at: string;
+}
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
 export const apiRegister = (data: RegisterData) =>
@@ -657,3 +681,36 @@ export const apiSubmitReview = (
 
 export const apiGetDoctorStats = (token: string) =>
   request<DoctorStatsResponse>('GET', '/orders/stats/doctor', undefined, token);
+
+// ── Notification ─────────────────────────────────────────────────────────
+
+export const apiRegisterDeviceNotif = (
+  token: string,
+  data: {
+    token: string;
+    platform: string;
+    deviceName: string;
+  }
+) => request('POST', '/notifications/devices', data, token);
+
+export const apiGetNotifications = (
+  params: Record<string, string | number | undefined> = {},
+  token: string
+) =>
+  request<Paginated<NotificationData>>(
+    'GET',
+    `/notifications${toQS(params)}`,
+    undefined,
+    token
+  );
+
+export const apiMarkNotificationRead = (id: string, token: string) =>
+  request<NotificationData>(
+    'PATCH',
+    `/notifications/${id}/read`,
+    undefined,
+    token
+  );
+
+export const apiMarkAllNotificationsRead = (token: string) =>
+  request<void>('PATCH', '/notifications/read-all', undefined, token);

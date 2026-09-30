@@ -1,2 +1,16 @@
 patchedDependencies:
   '@zoom/meetingsdk-react-native@7.0.5': patches/@zoom__meetingsdk-react-native@7.0.5.patch
+allowBuilds:
+  unrs-resolver: true
+  yarn: true
+
+autoInstallPeers: true
+
+# patchedDependencies:
+#   '@zoom/meetingsdk-react-native': patches/@zoom__meetingsdk-react-native.patch
+
+# Fixes ERR_PNPM_TRUST_DOWNGRADE (allows package version rollbacks/updates)
+trustPolicy: 'off'
+
+# Fixes ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION (allows newly published packages)
+minimumReleaseAge: 0

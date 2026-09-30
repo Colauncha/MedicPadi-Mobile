@@ -49,16 +49,25 @@ export default function TabLayout() {
         options={{
           title: 'Appointments',
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="calendar.badge.plus" color={color} />
+            <IconSymbol size={28} name="calendar" color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="patients"
+        name="lab"
         options={{
-          title: 'Patients',
+          title: 'Labs',
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="person.2.fill" color={color} />
+            <IconSymbol size={28} name="flask.fill" color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="pharmacy"
+        options={{
+          title: 'Pharmacy',
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="pill.fill" color={color} />
           ),
         }}
       />

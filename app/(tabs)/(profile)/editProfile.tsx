@@ -1,6 +1,7 @@
+import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import {
   Alert,
   Image,
@@ -10,6 +11,7 @@ import {
   ScrollView,
   StyleSheet,
   TextInput,
+  TextInputProps,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -18,231 +20,156 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/Button';
-import { Dropdown, DropdownOption } from '@/components/ui/DropDown2';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/context/AuthContext';
 import { useThemedStyles } from '@/hooks/useThemedStyle';
 import {
   apiUpdateProfile,
   apiUploadProfilePicture,
-  DoctorsSpecialityResponse,
-  fetchDoctorsSpeciality,
+  NextOfKin,
+  ProfileUpdateData,
 } from '@/services/api';
 import { useTheme } from '@/theme/ThemeProvider';
 
-const genderOptions: DropdownOption[] = [
-  {
-    value: 'male',
-    label: 'Male',
-  },
-  {
-    value: 'female',
-    label: 'Female',
-  },
-];
+const GENDER_OPTIONS = ['male', 'female', 'other'];
+const BLOOD_GROUP_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
+const GENOTYPE_OPTIONS = ['AA', 'AS', 'SS', 'AC'];
 
-export type ConsultantFormValues = {
+type PatientFormValues = {
   firstName: string;
   lastName: string;
+  phoneNumber: string;
+  emergencyContact: string;
+  dateOfBirth: string;
+  height: string;
+  weight: string;
   gender: string;
-  speciality: string;
-  bio: string;
-  placeOfWork: string;
-  yearsOfService: string;
-  awards: string;
-  costPerSession: string;
-  sessionLength: string;
-  licenceNumber: string;
+  bloodGroup: string;
+  genotype: string;
 };
 
-type ProfilePayload = Record<string, string | number | undefined>;
+type NextOfKinValues = Required<NextOfKin>;
 
-function parseOptionalNumber(value: string): number | undefined {
-  const trimmed = value.trim();
-
-  if (!trimmed) {
-    return undefined;
-  }
-
-  const parsed = Number(trimmed);
-
-  return Number.isFinite(parsed) ? parsed : undefined;
-}
-
-function removeUnsetFields(obj: ProfilePayload): ProfilePayload {
+/** Drops empty strings so untouched fields don't overwrite server values. */
+function removeUnsetFields<T extends Record<string, string>>(
+  obj: T
+): Partial<T> {
   return Object.fromEntries(
-    Object.entries(obj).filter(
-      ([, value]) => value !== undefined && value !== null && value !== ''
-    )
-  );
+    Object.entries(obj).filter(([, value]) => value.trim() !== '')
+  ) as Partial<T>;
 }
 
-export default function EditConsultantProfileScreen() {
-  const { profile, token } = useAuth();
+const formatDob = (iso: string) => {
+  if (!iso) return '';
+  const date = new Date(iso);
+  return isNaN(date.getTime())
+    ? iso
+    : date.toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      });
+};
+
+export default function EditProfileScreen() {
+  const { profile, token, refreshProfile } = useAuth();
   const { theme: appTheme } = useTheme();
 
-  const [doctorsSpeciality, setDoctorsSpeciality] =
-    useState<DoctorsSpecialityResponse | null>(null);
-
-  const [formValues, setFormValues] = useState<ConsultantFormValues>({
+  const [formValues, setFormValues] = useState<PatientFormValues>({
     firstName: '',
     lastName: '',
+    phoneNumber: '',
+    emergencyContact: '',
+    dateOfBirth: '',
+    height: '',
+    weight: '',
     gender: '',
-    speciality: '',
-    bio: '',
-    placeOfWork: '',
-    yearsOfService: '',
-    awards: '',
-    costPerSession: '',
-    sessionLength: '',
-    licenceNumber: '',
+    bloodGroup: '',
+    genotype: '',
   });
+  const [nextOfKin, setNextOfKin] = useState<NextOfKinValues>({
+    name: '',
+    phone: '',
+    email: '',
+    relationship: '',
+  });
+  const [allergies, setAllergies] = useState<string[]>([]);
+  const [allergyDraft, setAllergyDraft] = useState('');
 
-  const [openDropdown, setOpenDropdown] = useState<
-    keyof Pick<ConsultantFormValues, 'gender' | 'speciality'> | null
-  >(null);
-
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pickedImageUri, setPickedImageUri] = useState<string | null>(null);
 
-  const consultantProfile = profile?.profile;
-  const [prevConsultantId, setPrevConsultantId] = useState('');
+  // Re-seed the form whenever a different profile is loaded.
+  const patientProfile = profile?.profile;
+  const [prevProfileId, setPrevProfileId] = useState('');
 
-  if (consultantProfile?.id !== prevConsultantId) {
-    setPrevConsultantId(consultantProfile?.id || '');
+  if (patientProfile?.id !== prevProfileId) {
+    setPrevProfileId(patientProfile?.id || '');
     setFormValues({
-      firstName: consultantProfile?.firstName ?? '',
-      lastName: consultantProfile?.lastName ?? '',
-      gender: consultantProfile?.gender?.toLowerCase() ?? '',
-      speciality: consultantProfile?.speciality ?? '',
-      bio: consultantProfile?.bio ?? '',
-      placeOfWork: consultantProfile?.placeOfWork ?? '',
-      yearsOfService:
-        consultantProfile?.yearsOfService != null
-          ? String(consultantProfile?.yearsOfService)
-          : '',
-      awards:
-        consultantProfile?.awards != null
-          ? String(consultantProfile?.awards)
-          : '',
-      costPerSession:
-        consultantProfile?.costPerSession != null
-          ? String(consultantProfile?.costPerSession)
-          : '',
-      sessionLength:
-        consultantProfile?.sessionLength != null
-          ? String(consultantProfile?.sessionLength)
-          : '',
-      licenceNumber: consultantProfile?.licenceNumber ?? '',
+      firstName: patientProfile?.firstName ?? '',
+      lastName: patientProfile?.lastName ?? '',
+      phoneNumber: patientProfile?.phoneNumber ?? '',
+      emergencyContact: patientProfile?.emergencyContact ?? '',
+      dateOfBirth: patientProfile?.dateOfBirth ?? '',
+      height: patientProfile?.height ?? '',
+      weight: patientProfile?.weight ?? '',
+      gender: patientProfile?.gender?.toLowerCase() ?? '',
+      bloodGroup: patientProfile?.bloodGroup ?? '',
+      genotype: patientProfile?.genotype ?? '',
     });
+    setNextOfKin({
+      name: patientProfile?.nextOfKin?.name ?? '',
+      phone: patientProfile?.nextOfKin?.phone ?? '',
+      email: patientProfile?.nextOfKin?.email ?? '',
+      relationship: patientProfile?.nextOfKin?.relationship ?? '',
+    });
+    setAllergies(patientProfile?.allergies ?? []);
   }
 
-  /*
-   * Fetch consultant specialities.
-   */
-  useEffect(() => {
-    if (!token) {
-      return;
-    }
-
-    let mounted = true;
-
-    const loadSpecialities = async () => {
-      try {
-        const response = await fetchDoctorsSpeciality(token);
-
-        if (mounted) {
-          setDoctorsSpeciality(response);
-        }
-      } catch (error) {
-        console.error('Failed to fetch doctor specialities:', error);
-
-        if (mounted) {
-          setDoctorsSpeciality(null);
-        }
-      }
-    };
-
-    loadSpecialities();
-
-    return () => {
-      mounted = false;
-    };
-  }, [token]);
-
-  /*
-   * Convert the API speciality response into Dropdown options.
-   *
-   * The backend returns something like:
-   *
-   * {
-   *   general: "General Consultant",
-   *   oncology: "Oncology",
-   *   ...
-   * }
-   */
-  const specialityOptions = useMemo<DropdownOption[]>(() => {
-    if (!doctorsSpeciality) {
-      return [];
-    }
-
-    return Object.entries(doctorsSpeciality).map(([value, label]) => ({
-      value,
-      label,
-    }));
-  }, [doctorsSpeciality]);
-
-  const updateValue = <K extends keyof ConsultantFormValues>(
+  const updateValue = <K extends keyof PatientFormValues>(
     fieldName: K,
-    value: ConsultantFormValues[K]
+    value: PatientFormValues[K]
   ) => {
-    setFormValues((previous) => ({
-      ...previous,
-      [fieldName]: value,
-    }));
+    setFormValues((previous) => ({ ...previous, [fieldName]: value }));
+  };
+
+  const updateNextOfKin = (fieldName: keyof NextOfKinValues, value: string) => {
+    setNextOfKin((previous) => ({ ...previous, [fieldName]: value }));
+  };
+
+  const addAllergy = (raw: string) => {
+    const items = raw
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+    if (items.length === 0) return;
+    setAllergies((previous) =>
+      Array.from(new Set([...previous, ...items]))
+    );
+    setAllergyDraft('');
+  };
+
+  const handleAllergyChange = (text: string) => {
+    // A trailing comma commits the tag.
+    if (text.endsWith(',')) {
+      addAllergy(text);
+    } else {
+      setAllergyDraft(text);
+    }
   };
 
   const handleGoBack = () => {
-    if (isSubmitting) {
+    if (isSubmitting) return;
+    if (router.canGoBack()) {
+      router.back();
       return;
     }
     router.replace('/profile');
   };
 
-  /*
-   * Convert form values into the API payload.
-   */
-  const formatFields = (values: ConsultantFormValues): ProfilePayload => ({
-    firstName: values.firstName.trim() || undefined,
-
-    lastName: values.lastName.trim() || undefined,
-
-    gender: values.gender || undefined,
-
-    speciality:
-      values.speciality === 'general'
-        ? 'general consultant'
-        : values.speciality || undefined,
-
-    bio: values.bio.trim() || undefined,
-
-    placeOfWork: values.placeOfWork.trim() || undefined,
-
-    yearsOfService: parseOptionalNumber(values.yearsOfService),
-
-    awards: parseOptionalNumber(values.awards),
-
-    costPerSession: parseOptionalNumber(values.costPerSession),
-
-    sessionLength: parseOptionalNumber(values.sessionLength),
-
-    licenceNumber: values.licenceNumber.trim() || undefined,
-  });
-
   const handleSubmit = async () => {
-    if (isSubmitting) {
-      return;
-    }
+    if (isSubmitting) return;
 
     if (!token) {
       Alert.alert(
@@ -252,78 +179,43 @@ export default function EditConsultantProfileScreen() {
       return;
     }
 
+    // Include a half-typed allergy that wasn't committed with a comma.
+    const finalAllergies = allergyDraft.trim()
+      ? Array.from(new Set([...allergies, allergyDraft.trim()]))
+      : allergies;
+
+    const nokValues = removeUnsetFields(nextOfKin);
+    const payload: ProfileUpdateData = {
+      ...removeUnsetFields(formValues),
+      allergies: finalAllergies,
+      ...(Object.keys(nokValues).length > 0 ? { nextOfKin: nokValues } : {}),
+    };
+
     try {
       setIsSubmitting(true);
-
-      const payload = removeUnsetFields(formatFields(formValues));
-
-      /*
-       * Update profile information first.
-       */
       await apiUpdateProfile(payload, token);
-
-      /*
-       * Upload the new image only when the user selected one.
-       */
       if (pickedImageUri) {
         await apiUploadProfilePicture(pickedImageUri, token);
       }
+      await refreshProfile();
 
-      Alert.alert(
-        'Profile updated',
-        'Your profile has been updated successfully.',
-        [
-          {
-            text: 'OK',
-            onPress: handleGoBack,
-          },
-        ]
-      );
-    } catch (error) {
-      console.error('Failed to update consultant profile:', error);
-
+      Alert.alert('Profile updated', 'Your profile has been updated.', [
+        { text: 'OK', onPress: handleGoBack },
+      ]);
+    } catch (error: any) {
+      console.error('Failed to update patient profile:', error);
       Alert.alert(
         'Unable to update profile',
-        'Something went wrong while saving your profile. Please try again.'
+        error?.message ??
+          'Something went wrong while saving your profile. Please try again.'
       );
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleUploadPic = async () => {
-    if (isSubmitting) {
-      return;
-    }
-
-    if (!token) {
-      Alert.alert(
-        'Authentication error',
-        'Your session has expired. Please log in again.'
-      );
-      return;
-    }
-
-    if (!pickedImageUri) return;
-
-    try {
-      setIsSubmitting(true);
-      const resp = await apiUploadProfilePicture(pickedImageUri, token);
-      if (resp) {
-        Alert.alert('Profile photo uploaded successfully');
-      }
-    } catch (error) {
-      console.error(error);
-      Alert.alert('Unable to update profile', `${error}`);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handlePickImage = async () => {
-    if (isSubmitting) {
-      return;
-    }
+    if (isSubmitting) return;
 
     try {
       const { status } =
@@ -348,7 +240,6 @@ export default function EditConsultantProfileScreen() {
       }
     } catch (error) {
       console.error('Failed to select profile picture:', error);
-
       Alert.alert(
         'Unable to select image',
         'There was a problem selecting the image. Please try again.'
@@ -356,8 +247,11 @@ export default function EditConsultantProfileScreen() {
     }
   };
 
-  const avatarUri =
-    pickedImageUri ?? profile?.profile?.profilePicture?.url ?? null;
+  const avatarUri = pickedImageUri ?? patientProfile?.profilePicture?.url ?? null;
+
+  const dobDate = formValues.dateOfBirth
+    ? new Date(formValues.dateOfBirth)
+    : new Date(2000, 0, 1);
 
   const styles = useThemedStyles((theme) =>
     StyleSheet.create({
@@ -367,22 +261,16 @@ export default function EditConsultantProfileScreen() {
         paddingBottom: theme.spacing.xxl + 20,
       },
 
-      keyboard: {
-        flex: 1,
-      },
+      keyboard: { flex: 1 },
 
       scroll: {
         flexGrow: 1,
         alignItems: 'center',
         padding: theme.spacing.base,
+        paddingBottom: 80,
       },
 
       card: {
-        // backgroundColor: theme.colors.surfaceCard,
-        borderRadius: theme.radius.xl,
-        borderColor: theme.colors.border,
-        borderWidth: 0,
-        // padding: theme.spacing.lg,
         width: '100%',
         maxWidth: 500,
       },
@@ -434,7 +322,9 @@ export default function EditConsultantProfileScreen() {
       },
 
       avatarPlaceholder: {
-        backgroundColor: theme.colors.textSecondary,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: theme.colors.surfaceCardLight,
       },
 
       cameraOverlay: {
@@ -457,9 +347,29 @@ export default function EditConsultantProfileScreen() {
         color: theme.colors.textSecondary,
       },
 
+      sectionTitle: {
+        fontFamily: theme.typography.fonts?.rounded,
+        fontSize: theme.typography.sizes.lg,
+        color: theme.colors.textSecondary,
+        marginBottom: theme.spacing.md,
+      },
+
+      divider: {
+        height: 1,
+        backgroundColor: theme.colors.border,
+        marginVertical: theme.spacing.lg,
+      },
+
       fieldContainer: {
         marginBottom: theme.spacing.base,
       },
+
+      fieldRow: {
+        flexDirection: 'row',
+        gap: theme.spacing.sm,
+      },
+
+      fieldRowItem: { flex: 1 },
 
       label: {
         fontFamily: theme.typography.fonts?.sans,
@@ -481,30 +391,113 @@ export default function EditConsultantProfileScreen() {
         fontSize: theme.typography.sizes.md,
       },
 
-      textArea: {
-        minHeight: 110,
-        paddingTop: theme.spacing.md,
-        textAlignVertical: 'top',
+      dateField: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+      },
+
+      dateText: {
+        fontFamily: theme.typography.fonts?.sans,
+        fontSize: theme.typography.sizes.md,
+        color: theme.colors.text,
+      },
+
+      placeholderText: {
+        color: theme.colors.textMuted,
+      },
+
+      chipRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: theme.spacing.sm,
+      },
+
+      chip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.spacing.xs,
+        paddingVertical: theme.spacing.sm,
+        paddingHorizontal: theme.spacing.md,
+        borderRadius: theme.radius.full,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        backgroundColor: theme.colors.surfaceCard,
+      },
+
+      chipActive: {
+        backgroundColor: theme.colors.primary.extraDeep,
+        borderColor: theme.colors.primary.extraDeep,
+      },
+
+      chipText: {
+        fontFamily: theme.typography.fonts?.sans,
+        fontSize: theme.typography.sizes.sm,
+        color: theme.colors.text,
+        textTransform: 'capitalize',
+      },
+
+      chipTextActive: {
+        color: theme.colors.buttonText,
+      },
+
+      tagRow: {
+        marginTop: theme.spacing.sm,
       },
 
       btn: {
         width: '100%',
         marginTop: theme.spacing.base,
       },
-
-      emptyContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        padding: theme.spacing.xl,
-      },
-
-      loadingContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: theme.spacing.sm,
-      },
     })
+  );
+
+  const renderInput = (
+    label: string,
+    value: string,
+    onChangeText: (text: string) => void,
+    props: TextInputProps = {}
+  ) => (
+    <View style={styles.fieldContainer}>
+      <ThemedText style={styles.label}>{label}</ThemedText>
+      <TextInput
+        value={value}
+        placeholderTextColor={appTheme.colors.textMuted}
+        editable={!isSubmitting}
+        style={styles.input}
+        onChangeText={onChangeText}
+        {...props}
+      />
+    </View>
+  );
+
+  const renderChipSelect = (
+    label: string,
+    options: string[],
+    field: 'gender' | 'bloodGroup' | 'genotype'
+  ) => (
+    <View style={styles.fieldContainer}>
+      <ThemedText style={styles.label}>{label}</ThemedText>
+      <View style={styles.chipRow}>
+        {options.map((option) => {
+          const active = formValues[field] === option;
+          return (
+            <TouchableOpacity
+              key={option}
+              style={[styles.chip, active && styles.chipActive]}
+              onPress={() => updateValue(field, active ? '' : option)}
+              disabled={isSubmitting}
+            >
+              <ThemedText
+                style={[styles.chipText, active && styles.chipTextActive]}
+              >
+                {option}
+              </ThemedText>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
   );
 
   return (
@@ -520,255 +513,231 @@ export default function EditConsultantProfileScreen() {
         >
           <ThemedView style={styles.card}>
             {/* Header */}
-            <View>
-              <View style={styles.upperRow}>
-                <Pressable
-                  style={styles.upperRowItem}
-                  onPress={handleGoBack}
-                  disabled={isSubmitting}
-                >
-                  <IconSymbol
-                    name="chevron.left"
-                    color={appTheme.colors.textMuted}
-                    size={16}
-                  />
+            <View style={styles.upperRow}>
+              <Pressable
+                style={styles.upperRowItem}
+                onPress={handleGoBack}
+                disabled={isSubmitting}
+              >
+                <IconSymbol
+                  name="chevron.left"
+                  color={appTheme.colors.textMuted}
+                  size={16}
+                />
+                <ThemedText style={styles.upperRowItemText}>Back</ThemedText>
+              </Pressable>
 
-                  <ThemedText style={styles.upperRowItemText}>Back</ThemedText>
-                </Pressable>
+              <ThemedText style={styles.upperRowText}>Edit Profile</ThemedText>
+            </View>
 
-                <ThemedText style={styles.upperRowText}>
-                  Edit Profile
-                </ThemedText>
-              </View>
-
-              {/* Profile photo */}
-              <View style={styles.avatarSection}>
-                <TouchableOpacity
-                  style={styles.avatarContainer}
-                  onPress={handlePickImage}
-                  disabled={isSubmitting}
-                  activeOpacity={0.8}
-                >
-                  {avatarUri ? (
-                    <Image source={{ uri: avatarUri }} style={styles.avatar} />
-                  ) : (
-                    <View style={[styles.avatar, styles.avatarPlaceholder]} />
-                  )}
-
-                  <View style={styles.cameraOverlay}>
+            {/* Profile photo */}
+            <View style={styles.avatarSection}>
+              <TouchableOpacity
+                style={styles.avatarContainer}
+                onPress={handlePickImage}
+                disabled={isSubmitting}
+                activeOpacity={0.8}
+              >
+                {avatarUri ? (
+                  <Image source={{ uri: avatarUri }} style={styles.avatar} />
+                ) : (
+                  <View style={[styles.avatar, styles.avatarPlaceholder]}>
                     <IconSymbol
-                      name="camera"
-                      size={16}
-                      color={appTheme.colors.mono.light}
+                      name="person.fill"
+                      size={60}
+                      color={appTheme.colors.textMuted}
                     />
                   </View>
-                </TouchableOpacity>
+                )}
 
-                {pickedImageUri ? (
-                  <Button
-                    label="Save"
-                    onPress={handleUploadPic}
-                    style={{ height: 30 }}
-                    loading={isSubmitting}
+                <View style={styles.cameraOverlay}>
+                  <IconSymbol
+                    name="camera"
+                    size={16}
+                    color={appTheme.colors.mono.light}
                   />
-                ) : (
-                  <ThemedText style={styles.changePhotoText}>
-                    Tap to change photo
-                  </ThemedText>
+                </View>
+              </TouchableOpacity>
+
+              <ThemedText style={styles.changePhotoText}>
+                {pickedImageUri
+                  ? 'New photo will be saved with your changes'
+                  : 'Tap to change photo'}
+              </ThemedText>
+            </View>
+
+            {/* Personal information */}
+            <ThemedText style={styles.sectionTitle}>
+              Personal Information
+            </ThemedText>
+
+            {renderInput(
+              'First Name',
+              formValues.firstName,
+              (text) => updateValue('firstName', text),
+              { placeholder: 'First Name', autoCapitalize: 'words' }
+            )}
+            {renderInput(
+              'Last Name',
+              formValues.lastName,
+              (text) => updateValue('lastName', text),
+              { placeholder: 'Last Name', autoCapitalize: 'words' }
+            )}
+            {renderInput(
+              'Phone Number',
+              formValues.phoneNumber,
+              (text) => updateValue('phoneNumber', text),
+              { placeholder: 'Phone number', keyboardType: 'phone-pad' }
+            )}
+            {renderInput(
+              'Emergency Contact',
+              formValues.emergencyContact,
+              (text) => updateValue('emergencyContact', text),
+              {
+                placeholder: 'Emergency phone number',
+                keyboardType: 'phone-pad',
+              }
+            )}
+
+            {/* Date of birth */}
+            <View style={styles.fieldContainer}>
+              <ThemedText style={styles.label}>Date of Birth</ThemedText>
+              <TouchableOpacity
+                style={[styles.input, styles.dateField]}
+                onPress={() => setShowDatePicker((open) => !open)}
+                disabled={isSubmitting}
+              >
+                <ThemedText
+                  style={[
+                    styles.dateText,
+                    !formValues.dateOfBirth && styles.placeholderText,
+                  ]}
+                >
+                  {formatDob(formValues.dateOfBirth) || 'Select date of birth'}
+                </ThemedText>
+                <IconSymbol
+                  name="calendar"
+                  size={18}
+                  color={appTheme.colors.textMuted}
+                />
+              </TouchableOpacity>
+              {showDatePicker && (
+                <DateTimePicker
+                  value={isNaN(dobDate.getTime()) ? new Date(2000, 0, 1) : dobDate}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  maximumDate={new Date()}
+                  onValueChange={(_event, date) => {
+                    // Android closes its dialog on pick; iOS stays inline.
+                    if (Platform.OS !== 'ios') setShowDatePicker(false);
+                    updateValue('dateOfBirth', date.toISOString().split('T')[0]);
+                  }}
+                  onDismiss={() => setShowDatePicker(false)}
+                />
+              )}
+            </View>
+
+            <View style={styles.fieldRow}>
+              <View style={styles.fieldRowItem}>
+                {renderInput(
+                  'Height (cm)',
+                  formValues.height,
+                  (text) => updateValue('height', text),
+                  { placeholder: 'Height', keyboardType: 'numeric' }
+                )}
+              </View>
+              <View style={styles.fieldRowItem}>
+                {renderInput(
+                  'Weight (kg)',
+                  formValues.weight,
+                  (text) => updateValue('weight', text),
+                  { placeholder: 'Weight', keyboardType: 'numeric' }
                 )}
               </View>
             </View>
 
-            {/* First name */}
-            <View style={styles.fieldContainer}>
-              <ThemedText style={styles.label}>First Name</ThemedText>
+            {renderChipSelect('Gender', GENDER_OPTIONS, 'gender')}
+            {renderChipSelect('Blood Group', BLOOD_GROUP_OPTIONS, 'bloodGroup')}
+            {renderChipSelect('Genotype', GENOTYPE_OPTIONS, 'genotype')}
 
+            {/* Allergies */}
+            <View style={styles.fieldContainer}>
+              <ThemedText style={styles.label}>Allergies</ThemedText>
               <TextInput
-                value={formValues.firstName}
-                placeholder="First Name"
+                value={allergyDraft}
+                placeholder="Type an allergy, then comma to add"
                 placeholderTextColor={appTheme.colors.textMuted}
-                keyboardType="default"
-                autoCapitalize="words"
                 editable={!isSubmitting}
                 style={styles.input}
-                onFocus={() => setOpenDropdown(null)}
-                onChangeText={(text) => updateValue('firstName', text)}
+                onChangeText={handleAllergyChange}
+                onSubmitEditing={() => addAllergy(allergyDraft)}
+                returnKeyType="done"
+                blurOnSubmit={false}
               />
+              {allergies.length > 0 && (
+                <View style={[styles.chipRow, styles.tagRow]}>
+                  {allergies.map((allergy) => (
+                    <TouchableOpacity
+                      key={allergy}
+                      style={[styles.chip, styles.chipActive]}
+                      onPress={() =>
+                        setAllergies((previous) =>
+                          previous.filter((item) => item !== allergy)
+                        )
+                      }
+                      disabled={isSubmitting}
+                      accessibilityLabel={`Remove ${allergy}`}
+                    >
+                      <ThemedText
+                        style={[styles.chipText, styles.chipTextActive]}
+                      >
+                        {allergy}
+                      </ThemedText>
+                      <IconSymbol
+                        name="xmark"
+                        size={12}
+                        color={appTheme.colors.buttonText}
+                      />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
             </View>
 
-            {/* Last name */}
-            <View style={styles.fieldContainer}>
-              <ThemedText style={styles.label}>Last Name</ThemedText>
+            <View style={styles.divider} />
 
-              <TextInput
-                value={formValues.lastName}
-                placeholder="Last Name"
-                placeholderTextColor={appTheme.colors.textMuted}
-                keyboardType="default"
-                autoCapitalize="words"
-                editable={!isSubmitting}
-                style={styles.input}
-                onFocus={() => setOpenDropdown(null)}
-                onChangeText={(text) => updateValue('lastName', text)}
-              />
-            </View>
+            {/* Next of kin */}
+            <ThemedText style={styles.sectionTitle}>Next of Kin</ThemedText>
 
-            {/* Gender */}
-            <View style={styles.fieldContainer}>
-              <Dropdown
-                label="Gender"
-                value={formValues.gender}
-                placeholder="Select gender"
-                options={genderOptions}
-                isOpen={openDropdown === 'gender'}
-                onOpenChange={(open) => setOpenDropdown(open ? 'gender' : null)}
-                onChange={(value) => {
-                  updateValue('gender', value);
-                  setOpenDropdown(null);
-                }}
-              />
-            </View>
+            {renderInput(
+              'Name',
+              nextOfKin.name,
+              (text) => updateNextOfKin('name', text),
+              { placeholder: 'Contact name', autoCapitalize: 'words' }
+            )}
+            {renderInput(
+              'Phone',
+              nextOfKin.phone,
+              (text) => updateNextOfKin('phone', text),
+              { placeholder: 'Contact phone number', keyboardType: 'phone-pad' }
+            )}
+            {renderInput(
+              'Email',
+              nextOfKin.email,
+              (text) => updateNextOfKin('email', text),
+              {
+                placeholder: 'Contact email address',
+                keyboardType: 'email-address',
+                autoCapitalize: 'none',
+              }
+            )}
+            {renderInput(
+              'Relationship',
+              nextOfKin.relationship,
+              (text) => updateNextOfKin('relationship', text),
+              { placeholder: 'e.g. Spouse, Parent, Sibling' }
+            )}
 
-            {/* Speciality */}
-            <View style={styles.fieldContainer}>
-              <Dropdown
-                label="Speciality"
-                value={
-                  formValues.speciality === 'general consultant'
-                    ? 'general'
-                    : formValues.speciality
-                }
-                placeholder="Select speciality"
-                options={specialityOptions}
-                isOpen={openDropdown === 'speciality'}
-                onOpenChange={(open) =>
-                  setOpenDropdown(open ? 'speciality' : null)
-                }
-                onChange={(value) => {
-                  updateValue('speciality', value);
-                  setOpenDropdown(null);
-                }}
-              />
-            </View>
-
-            {/* Bio */}
-            <View style={styles.fieldContainer}>
-              <ThemedText style={styles.label}>Bio</ThemedText>
-
-              <TextInput
-                value={formValues.bio}
-                placeholder="About you"
-                placeholderTextColor={appTheme.colors.textMuted}
-                keyboardType="default"
-                multiline
-                numberOfLines={5}
-                editable={!isSubmitting}
-                style={[styles.input, styles.textArea]}
-                onFocus={() => setOpenDropdown(null)}
-                onChangeText={(text) => updateValue('bio', text)}
-              />
-            </View>
-
-            {/* Place of work */}
-            <View style={styles.fieldContainer}>
-              <ThemedText style={styles.label}>Place of Work</ThemedText>
-
-              <TextInput
-                value={formValues.placeOfWork}
-                placeholder="Company name"
-                placeholderTextColor={appTheme.colors.textMuted}
-                keyboardType="default"
-                autoCapitalize="words"
-                editable={!isSubmitting}
-                style={styles.input}
-                onFocus={() => setOpenDropdown(null)}
-                onChangeText={(text) => updateValue('placeOfWork', text)}
-              />
-            </View>
-
-            {/* Years of service */}
-            <View style={styles.fieldContainer}>
-              <ThemedText style={styles.label}>Years of Service</ThemedText>
-
-              <TextInput
-                value={formValues.yearsOfService}
-                placeholder="Experience in Years"
-                placeholderTextColor={appTheme.colors.textMuted}
-                keyboardType="numeric"
-                editable={!isSubmitting}
-                style={styles.input}
-                onFocus={() => setOpenDropdown(null)}
-                onChangeText={(text) => updateValue('yearsOfService', text)}
-              />
-            </View>
-
-            {/* Awards */}
-            <View style={styles.fieldContainer}>
-              <ThemedText style={styles.label}>Awards</ThemedText>
-
-              <TextInput
-                value={formValues.awards}
-                placeholder="Amount of awards"
-                placeholderTextColor={appTheme.colors.textMuted}
-                keyboardType="numeric"
-                editable={!isSubmitting}
-                style={styles.input}
-                onFocus={() => setOpenDropdown(null)}
-                onChangeText={(text) => updateValue('awards', text)}
-              />
-            </View>
-
-            {/* Cost per session */}
-            <View style={styles.fieldContainer}>
-              <ThemedText style={styles.label}>Cost Per Session (₦)</ThemedText>
-
-              <TextInput
-                value={formValues.costPerSession}
-                placeholder="Cost per session"
-                placeholderTextColor={appTheme.colors.textMuted}
-                keyboardType="numeric"
-                editable={!isSubmitting}
-                style={styles.input}
-                onFocus={() => setOpenDropdown(null)}
-                onChangeText={(text) => updateValue('costPerSession', text)}
-              />
-            </View>
-
-            {/* Session length */}
-            <View style={styles.fieldContainer}>
-              <ThemedText style={styles.label}>
-                Session Length (minutes)
-              </ThemedText>
-
-              <TextInput
-                value={formValues.sessionLength}
-                placeholder="Length per session (minutes)"
-                placeholderTextColor={appTheme.colors.textMuted}
-                keyboardType="numeric"
-                editable={!isSubmitting}
-                style={styles.input}
-                onFocus={() => setOpenDropdown(null)}
-                onChangeText={(text) => updateValue('sessionLength', text)}
-              />
-            </View>
-
-            {/* Licence number */}
-            <View style={styles.fieldContainer}>
-              <ThemedText style={styles.label}>Licence Number</ThemedText>
-
-              <TextInput
-                value={formValues.licenceNumber}
-                placeholder="Licence number"
-                placeholderTextColor={appTheme.colors.textMuted}
-                keyboardType="default"
-                editable={!isSubmitting}
-                style={styles.input}
-                onFocus={() => setOpenDropdown(null)}
-                onChangeText={(text) => updateValue('licenceNumber', text)}
-              />
-            </View>
-
-            {/* Submit */}
             <Button
               label="Save Changes"
               onPress={handleSubmit}

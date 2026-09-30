@@ -7,6 +7,19 @@ export const AppointmentsPage = () => {
   // const styles = useThemedStyles((theme) => StyleSheet.create({}));
   const { theme } = useTheme();
 
+  const headerStyles = {
+    headerTitleAlign: 'center' as const,
+    headerTitleStyle: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.fonts?.rounded,
+      fontSize: theme.typography.sizes.xl,
+      fontWeight: 'bold' as const,
+    },
+    headerStyle: {
+      backgroundColor: theme.colors.background,
+    },
+  };
+
   return (
     <Stack
       screenOptions={{
@@ -18,16 +31,7 @@ export const AppointmentsPage = () => {
         options={{
           // headerShown: true,
           title: 'Appointment',
-          headerTitleAlign: 'center',
-          headerTitleStyle: {
-            color: theme.colors.textSecondary,
-            fontFamily: theme.typography.fonts?.rounded,
-            fontSize: theme.typography.sizes.xl,
-            fontWeight: 'bold',
-          },
-          headerStyle: {
-            backgroundColor: theme.colors.background,
-          },
+          ...headerStyles,
         }}
       />
       <Stack.Screen
@@ -36,16 +40,32 @@ export const AppointmentsPage = () => {
           // headerShown: true,
           title: 'Appointment Details',
           headerBackVisible: true,
-          headerTitleAlign: 'center',
-          headerTitleStyle: {
-            color: theme.colors.textSecondary,
-            fontFamily: theme.typography.fonts?.rounded,
-            fontSize: theme.typography.sizes.xl,
-            fontWeight: 'bold',
-          },
-          headerStyle: {
-            backgroundColor: theme.colors.background,
-          },
+          ...headerStyles,
+        }}
+      />
+      <Stack.Screen
+        name="speciality/index"
+        options={{ headerShown: true, title: 'Specialty', ...headerStyles }}
+      />
+      <Stack.Screen
+        name="speciality/[speciality]"
+        options={{ headerShown: true, title: 'Doctors', ...headerStyles }}
+      />
+      <Stack.Screen name="doctor/[id]" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="book"
+        options={{
+          headerShown: true,
+          title: 'My Appointment',
+          ...headerStyles,
+        }}
+      />
+      <Stack.Screen
+        name="PaymentWebViewScreen"
+        options={{
+          headerShown: true,
+          title: 'Payment Screen',
+          ...headerStyles,
         }}
       />
     </Stack>

@@ -10,6 +10,7 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
+import AvatarFromString from '../avatar';
 import { ThemedText } from '../themed-text';
 import { Button } from '../ui/Button';
 import { IconSymbol } from '../ui/icon-symbol';
@@ -197,6 +198,163 @@ export const AppointmentCard = ({
         </View>
       )}
       {/* </View> */}
+    </TouchableOpacity>
+  );
+};
+
+// ---------- Patient-side appointment card ----------
+
+export const doctorDisplayName = (doctor?: ProfileFields) =>
+  doctor?.firstName
+    ? `Dr. ${doctor.firstName} ${doctor.lastName ?? ''}`.trim()
+    : 'Doctor';
+
+export const PatientAppointmentCard = ({
+  appointment,
+  doctor,
+  theme,
+  now,
+  extraStyle,
+}: {
+  appointment: AppointmentData;
+  doctor?: ProfileFields;
+  theme: Theme;
+  /** Reference time (ms) for deciding whether the appointment is upcoming. */
+  now: number;
+  extraStyle?: StyleProp<ViewStyle>;
+}) => {
+  const badge = getStatusStyle(theme, appointment.status);
+  const name = doctorDisplayName(doctor);
+  const status = appointment.status?.toLowerCase();
+  const isUpcoming =
+    (status === 'pending' || status === 'confirmed') &&
+    new Date(appointment.appointment_time).getTime() >= now;
+
+  const openDetails = () =>
+    router.push({
+      pathname: '/appointments/[id]',
+      params: { id: appointment.id },
+    });
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.8}
+      style={[
+        {
+          backgroundColor: theme.colors.surfaceCardLight,
+          borderRadius: theme.radius.lg,
+          padding: theme.spacing.base,
+          gap: theme.spacing.md,
+        },
+        extraStyle,
+      ]}
+      onPress={openDetails}
+    >
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: theme.spacing.md,
+        }}
+      >
+        {doctor?.profilePicture?.url ? (
+          <Image
+            source={{ uri: doctor.profilePicture.url }}
+            style={{ width: 48, height: 48, borderRadius: 24 }}
+            contentFit="cover"
+          />
+        ) : (
+          <AvatarFromString input={doctor?.firstName || 'Doctor'} size={48} />
+        )}
+        <View style={{ flex: 1 }}>
+          <ThemedText
+            style={{
+              fontSize: theme.typography.sizes.md,
+              color: theme.colors.text,
+            }}
+            type="defaultSemiBold"
+            numberOfLines={1}
+          >
+            {name}
+          </ThemedText>
+          <Text
+            style={{
+              fontSize: theme.typography.sizes.sm,
+              color: theme.colors.textMuted,
+              textTransform: 'capitalize',
+            }}
+            numberOfLines={1}
+          >
+            {doctor?.speciality ?? 'General Practitioner'}
+          </Text>
+          <Text
+            style={{
+              fontSize: theme.typography.sizes.sm,
+              color: theme.colors.textSecondary,
+              marginTop: 2,
+            }}
+          >
+            {formatDate(appointment.appointment_time)},{' '}
+            {formatTime(appointment.appointment_time)}
+          </Text>
+        </View>
+        <View
+          style={{
+            alignSelf: 'flex-start',
+            paddingHorizontal: theme.spacing.sm,
+            paddingVertical: 2,
+            borderRadius: theme.radius.full,
+            backgroundColor: badge.backgroundColor,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: theme.typography.sizes.xs,
+              color: badge.color,
+              textTransform: 'capitalize',
+            }}
+          >
+            {badge.label}
+          </Text>
+        </View>
+      </View>
+
+      {appointment.description ? (
+        <Text
+          style={{
+            fontSize: theme.typography.sizes.sm,
+            color: theme.colors.textSecondary,
+          }}
+        >
+          {truncate(appointment.description, 60)}
+        </Text>
+      ) : null}
+
+      {isUpcoming && (
+        <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
+          <Button
+            label="Reschedule"
+            size="sm"
+            style={{ flex: 1 }}
+            onPress={() =>
+              router.push({
+                pathname: '/appointments/book',
+                params: {
+                  providerId: appointment.provider_id,
+                  doctorName: name,
+                },
+              })
+            }
+          />
+          <Button
+            label="View details"
+            size="sm"
+            variant="outline"
+            style={{ flex: 1 }}
+            onPress={openDetails}
+          />
+        </View>
+      )}
     </TouchableOpacity>
   );
 };
