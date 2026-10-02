@@ -253,6 +253,14 @@ const BookingDetailsScreen = () => {
     });
   };
 
+  const handleReview = () => {
+    if (!appt?.provider_id) return;
+    // router.push({
+    //   pathname: '/appointments/book',
+    //   params: { providerId: appt.provider_id, doctorName: fullName },
+    // });
+  };
+
   const handleCancel = () => {
     if (!appt?.id || !token) return;
     Alert.alert(
@@ -575,6 +583,11 @@ const BookingDetailsScreen = () => {
         backgroundColor: theme.colors.primary.extraDeep,
         marginTop: theme.spacing.md,
       },
+
+      ghostBtn: {
+        marginTop: theme.spacing.md,
+      },
+
       cancelBtn: {
         backgroundColor: theme.colors.dangerBg,
         marginTop: theme.spacing.md,
@@ -845,7 +858,9 @@ const BookingDetailsScreen = () => {
               </View>
               <View style={styles.paymentInfoRow}>
                 <Text style={styles.paymentInfoLabel}>Sessions</Text>
-                <Text style={styles.paymentInfoValue}>{appt.sessions || 1}</Text>
+                <Text style={styles.paymentInfoValue}>
+                  {appt.sessions || 1}
+                </Text>
               </View>
               <View style={styles.paymentInfoTotalRow}>
                 <Text style={styles.paymentInfoTotalLabel}>Total</Text>
@@ -938,7 +953,11 @@ const BookingDetailsScreen = () => {
                 variant={isPaid ? 'outline' : 'primary'}
                 onPress={handleReschedule}
                 disabled={!appt.provider_id}
-                style={isPaid ? { marginTop: appTheme.spacing.md } : styles.primaryBtn}
+                style={
+                  isPaid
+                    ? { marginTop: appTheme.spacing.md }
+                    : styles.primaryBtn
+                }
               />
               <Button
                 label="Cancel Appointment"
@@ -956,6 +975,15 @@ const BookingDetailsScreen = () => {
               onPress={handleReschedule}
               disabled={!appt.provider_id}
               style={styles.primaryBtn}
+            />
+          )}
+          {status === 'completed' && (
+            <Button
+              label="Review Doctor"
+              variant="outline"
+              onPress={handleReview}
+              disabled={!appt.provider_id}
+              style={styles.ghostBtn}
             />
           )}
         </ScrollView>

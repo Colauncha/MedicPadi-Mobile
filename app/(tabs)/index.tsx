@@ -484,7 +484,7 @@ export default function HomeScreen() {
       scroll: {
         flex: 1,
         padding: theme.spacing.base,
-        paddingBottom: theme.spacing.xxl + 20,
+        paddingBottom: theme.spacing.xxl + 35,
       },
       quickRow: {
         flexDirection: 'row',

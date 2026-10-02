@@ -190,6 +190,17 @@ export interface ProfileData {
   rest?: AuthUser;
 }
 
+// update business hours payload
+export interface BusinessHoursUpdateData {
+  monday?: BusinessHoursDay;
+  tuesday?: BusinessHoursDay;
+  wednesday?: BusinessHoursDay;
+  thursday?: BusinessHoursDay;
+  friday?: BusinessHoursDay;
+  saturday?: BusinessHoursDay;
+  sunday?: BusinessHoursDay;
+}
+
 // Payload accepted by PATCH /profile
 export type ProfileUpdateData = Partial<ProfileFields>;
 
@@ -281,8 +292,47 @@ export interface EHRRecord {
   diagnosis?: string;
   prescription?: string;
   notes?: string;
+  source_type?: EHRSourceType;
+  source_id?: string;
+  document_url?: string;
   createdAt: string;
   provider?: ProfileFields;
+}
+
+export type EHRSourceType =
+  | 'appointment'
+  | 'prescription'
+  | 'lab_test'
+  | 'other';
+
+// Payload for POST /ehr/records (multipart) — send either document_url or document, not both
+export interface CreateEHRRecordData {
+  patient_id: string;
+  source_type: EHRSourceType;
+  source_id: string;
+  document_url?: string;
+  // document?: { uri: string; name: string; mimeType: string };
+}
+
+export type ConsentAccessLevel = 'view_only' | 'full_access';
+
+export type ConsentStatus =
+  | 'active'
+  | 'pending'
+  | 'revoked'
+  | 'declined'
+  | 'cancelled';
+
+export interface EHRConsent {
+  id: string;
+  patient_id: string;
+  granted_to_user_id: string;
+  grantee_role: string;
+  access_level: ConsentAccessLevel;
+  status: ConsentStatus;
+  expires_at: string;
+  message?: string;
+  createdAt?: string;
 }
 
 export interface Paginated<T> {
@@ -350,7 +400,6 @@ export interface DoctorStatsResponse {
     };
   };
 }
-
 
 export enum NotificationType {
   APPOINTMENT = 'appointment',
@@ -428,33 +477,6 @@ export const apiCreateProfile = (
 export const apiUpdateProfile = (data: ProfileUpdateData, token: string) =>
   request<ProfileData>('PATCH', '/profile', data, token);
 
-// export const apiUploadProfilePicture = async (
-//   imageUri: string,
-//   token: string
-// ): Promise<ProfileData> => {
-//   const filename = imageUri.split('/').pop() ?? 'photo.jpg';
-//   const match = /\.(\w+)$/.exec(filename);
-//   const type = match ? `image/${match[1]}` : 'image/jpeg';
-
-//   console.log('Image uri: ', imageUri);
-//   const formData = new FormData();
-//   formData.append('image', {
-//     uri: imageUri,
-//     name: filename,
-//     type,
-//   } as any);
-
-//   console.log('formData: ', formData);
-
-//   return request<ProfileData>(
-//     'POST',
-//     '/profile/profile-picture',
-//     formData,
-//     token,
-//     true
-//   );
-// };
-
 export const apiUploadProfilePicture = async (
   imageUri: string,
   token: string
@@ -463,8 +485,6 @@ export const apiUploadProfilePicture = async (
   const formData = new FormData();
 
   formData.append('image', file);
-
-  console.log('formData: ', formData);
 
   return request<ProfileData>(
     'POST',
@@ -518,6 +538,11 @@ export const getDoctorsPatients = (
     token
   );
 
+export const updateBusinessHours = (
+  data: BusinessHoursUpdateData,
+  token: string
+) => request<ProfileData>('PATCH', '/profile/business-hours', data, token);
+
 // ── Appointments ──────────────────────────────────────────────────────────────
 
 export const apiGetAppointments = (
@@ -546,6 +571,10 @@ export interface ZoomSignatureResponse {
   signature: string;
 }
 
+export interface ZoomZAK {
+  zak: string;
+}
+
 export const apiGetZoomSignature = (id: string, token: string) =>
   request<ZoomSignatureResponse>(
     'GET',
@@ -554,9 +583,12 @@ export const apiGetZoomSignature = (id: string, token: string) =>
     token
   );
 
+export const apiGetZAK = (id: string, token: string) =>
+  request<ZoomZAK>('GET', `/orders/appointments/${id}/zak`, undefined, token);
+
 export const apiCompleteAppointment = (id: string, token: string) =>
   request<CompleteAppointmentResponse>(
-    'GET',
+    'PATCH',
     `/orders/appointments/${id}/complete`,
     undefined,
     token
@@ -580,6 +612,14 @@ export const apiUpdateAppointment = (
   token: string
 ) =>
   request<AppointmentData>('PATCH', `/orders/appointments/${id}`, data, token);
+
+export const apiAcceptAppointment = (id: string, token: string) =>
+  request<AppointmentData>(
+    'GET',
+    `/orders/appointments/${id}/accept`,
+    undefined,
+    token
+  );
 
 export const apiCancelAppointment = (id: string, token: string) =>
   request<void>('DELETE', `/orders/appointments/${id}`, undefined, token);
@@ -634,6 +674,64 @@ export const apiGetEHRRecords = (
     token
   );
 
+export const apiCreateEHRRecord = (
+  data: CreateEHRRecordData,
+  token: string
+) => {
+  const formData = new FormData();
+
+  formData.append('patient_id', data.patient_id);
+  formData.append('source_type', data.source_type);
+  formData.append('source_id', data.source_id);
+  if (data.document_url) {
+    formData.append('document_url', data.document_url);
+  }
+  // else if (data.document) {
+  //   formData.append('document', new File(data.document.uri));
+  // }
+
+  return request<EHRRecord>('POST', '/ehr/records', formData, token, true);
+};
+
+export const apiGetConsentList = (
+  params: Record<string, string | number> = {},
+  token: string
+) =>
+  request<Paginated<EHRConsent>>(
+    'GET',
+    `/ehr/consents${toQS(params)}`,
+    undefined,
+    token
+  );
+
+export const apiRequestConsent = (
+  data: {
+    patient_id: string;
+    access_level: ConsentAccessLevel;
+    message?: string;
+  },
+  token: string
+) => request<EHRConsent>('POST', `/ehr/consents/request`, data, token);
+
+export const apiAcceptConsent = (id: string, token: string) =>
+  request<EHRConsent>('POST', `/ehr/consents/${id}/approve`, undefined, token);
+
+export const apiDeclineConsent = (id: string, token: string) =>
+  request<EHRConsent>('POST', `/ehr/consents/${id}/decline`, undefined, token);
+
+export const apiRevokeConsent = (id: string, token: string) =>
+  request('DELETE', `/ehr/consents/${id}`, undefined, token);
+
+export const apiUpdateConsent = (
+  id: string,
+  data: {
+    access_level?: ConsentAccessLevel;
+  },
+  token: string
+) => request<EHRConsent>('PATCH', `/ehr/consents/${id}`, data, token);
+
+
+
 // ── Test Requisitions ─────────────────────────────────────────────────────────
 
 export const apiGetTestRequisitions = (
@@ -675,7 +773,7 @@ export const apiSubmitReview = (
   id: string,
   data: ReviewResponseData,
   token: string
-) => request<ReviewResponseData>('GET', `/profile/reviews/${id}`, data, token);
+) => request<ReviewResponseData>('POST', `/profile/reviews/${id}`, data, token);
 
 // ── Stats ─────────────────────────────────────────────────────────
 

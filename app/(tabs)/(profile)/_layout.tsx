@@ -35,10 +35,7 @@ export const ProfilePage = () => {
         name="medicalHistory"
         options={titledHeader('Medical History')}
       />
-      <Stack.Screen
-        name="notifications"
-        options={titledHeader('Notifications')}
-      />
+      <Stack.Screen name="notifications" />
       <Stack.Screen name="verifyEmail" options={titledHeader('Verify Email')} />
     </Stack>
   );
