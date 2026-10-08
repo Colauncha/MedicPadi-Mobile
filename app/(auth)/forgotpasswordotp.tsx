@@ -8,7 +8,6 @@ import { Link, router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -18,6 +17,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { AppAlert } from '@/components/ui/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const OTP_LENGTH = 6;
@@ -103,7 +103,12 @@ const Forgotpasswordotp = () => {
   const handleVerify = async () => {
     const otp = digits.join('');
     if (otp.length < OTP_LENGTH) {
-      Alert.alert('Incomplete code', 'Please enter all 6 digits.');
+      AppAlert.alert(
+        'Incomplete code',
+        'Please enter all 6 digits.',
+        undefined,
+        { variant: 'warning' }
+      );
       return;
     }
 
@@ -114,7 +119,12 @@ const Forgotpasswordotp = () => {
     );
 
     if (!newPassword || !confirmNewpassword) {
-      Alert.alert('Missing password', 'Please fill in both password fields.');
+      AppAlert.alert(
+        'Missing password',
+        'Please fill in both password fields.',
+        undefined,
+        { variant: 'warning' }
+      );
       return;
     }
 
@@ -126,15 +136,19 @@ const Forgotpasswordotp = () => {
     setVerifying(true);
     try {
       await apiResetPassword(email as string, parseInt(otp, 10), newPassword);
-      Alert.alert(
+      AppAlert.alert(
         'Email Verified',
-        'Your email has been verified successfully.'
+        'Your email has been verified successfully.',
+        undefined,
+        { variant: 'success' }
       );
       router.replace('/login');
     } catch (e: any) {
-      Alert.alert(
+      AppAlert.alert(
         'Verification failed',
-        e?.message ?? 'Invalid or expired token. Try again.'
+        e?.message ?? 'Invalid or expired token. Try again.',
+        undefined,
+        { variant: 'error' }
       );
     } finally {
       setVerifying(false);
@@ -145,12 +159,19 @@ const Forgotpasswordotp = () => {
     setResending(true);
     try {
       await apiRequestPasswordReset(email as string);
-      Alert.alert(
+      AppAlert.alert(
         'Code sent',
-        `A new verification code has been sent to ${email}.`
+        `A new verification code has been sent to ${email}.`,
+        undefined,
+        { variant: 'success' }
       );
     } catch (e: any) {
-      Alert.alert('Failed to resend', e?.message ?? 'Please try again.');
+      AppAlert.alert(
+        'Failed to resend',
+        e?.message ?? 'Please try again.',
+        undefined,
+        { variant: 'error' }
+      );
     } finally {
       setResending(false);
     }

@@ -8,7 +8,6 @@ import { apiRequestPasswordReset } from '@/services/api';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -17,6 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { AppAlert } from '@/components/ui/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const ForgotPassword = () => {
@@ -27,16 +27,28 @@ const ForgotPassword = () => {
   const handleSubmit = async () => {
     setLoading(true);
     if (!value) {
-      Alert.alert('Missing fields', 'Please enter your email or phone number.');
+      AppAlert.alert(
+        'Missing fields',
+        'Please enter your email or phone number.',
+        undefined,
+        { variant: 'warning' }
+      );
       setLoading(false);
       return;
     }
     try {
       const resp = await apiRequestPasswordReset(value);
-      Alert.alert('Api response', resp.message);
+      AppAlert.alert('Api response', resp.message, undefined, {
+        variant: 'info',
+      });
       router.push(`/forgotpasswordotp?email=${value}`);
     } catch (e: any) {
-      Alert.alert('Recent password failed', e.message ?? 'Please try again.');
+      AppAlert.alert(
+        'Recent password failed',
+        e.message ?? 'Please try again.',
+        undefined,
+        { variant: 'error' }
+      );
     } finally {
       setLoading(false);
     }

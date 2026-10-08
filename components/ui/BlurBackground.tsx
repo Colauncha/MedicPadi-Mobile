@@ -1,16 +1,21 @@
 import { useTheme } from '@/theme/ThemeProvider';
 import { BlurView } from 'expo-blur';
-import React from 'react';
-import { StyleSheet } from 'react-native';
+import { RefObject } from 'react';
+import { StyleSheet, View } from 'react-native';
 
-export const BlurBackground = () => {
+interface BlurBackgroundProps {
+  target?: RefObject<View | null>;
+}
+
+export const BlurBackground = ({ target }: BlurBackgroundProps) => {
   const { theme } = useTheme();
   return (
     <BlurView
-      intensity={60}
+      intensity={10}
       tint={theme.mode === 'dark' ? 'dark' : 'light'}
-      experimentalBlurMethod="dimezisBlurView"
-      style={StyleSheet.absoluteFill}
+      blurMethod="dimezisBlurViewSdk31Plus"
+      style={[StyleSheet.absoluteFill, { opacity: 1 }]}
+      blurTarget={target}
     />
   );
 };

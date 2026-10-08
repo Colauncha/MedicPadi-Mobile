@@ -2,7 +2,6 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -11,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { AppAlert } from '@/components/ui/alert';
 
 import { Button } from '@/components/ui/Button';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -46,9 +46,11 @@ export default function VerifyEmailScreen() {
       setResending(true);
       apiSendVerificationEmail(token)
         .catch((e: any) =>
-          Alert.alert(
+          AppAlert.alert(
             'Could not send code',
-            e?.message ?? 'Tap "Resend code" to try again.'
+            e?.message ?? 'Tap "Resend code" to try again.',
+            undefined,
+            { variant: 'error' }
           )
         )
         .finally(() => setResending(false));
@@ -79,7 +81,12 @@ export default function VerifyEmailScreen() {
   const handleVerify = async () => {
     const otp = digits.join('');
     if (otp.length < OTP_LENGTH) {
-      Alert.alert('Incomplete code', 'Please enter all 6 digits.');
+      AppAlert.alert(
+        'Incomplete code',
+        'Please enter all 6 digits.',
+        undefined,
+        { variant: 'warning' }
+      );
       return;
     }
     if (!token || !userId) return;
@@ -87,7 +94,7 @@ export default function VerifyEmailScreen() {
     try {
       await apiVerifyEmail(userId, otp, token);
       await refreshProfile();
-      Alert.alert(
+      AppAlert.alert(
         'Email Verified',
         'Your email has been verified successfully.',
         [
@@ -96,12 +103,15 @@ export default function VerifyEmailScreen() {
             onPress: () =>
               router.canGoBack() ? router.back() : router.replace('/profile'),
           },
-        ]
+        ],
+        { variant: 'success' }
       );
     } catch (e: any) {
-      Alert.alert(
+      AppAlert.alert(
         'Verification failed',
-        e?.message ?? 'Invalid or expired code. Try again.'
+        e?.message ?? 'Invalid or expired code. Try again.',
+        undefined,
+        { variant: 'error' }
       );
     } finally {
       setVerifying(false);
@@ -113,12 +123,19 @@ export default function VerifyEmailScreen() {
     setResending(true);
     try {
       await apiSendVerificationEmail(token);
-      Alert.alert(
+      AppAlert.alert(
         'Code sent',
-        `A new verification code has been sent to ${email}.`
+        `A new verification code has been sent to ${email}.`,
+        undefined,
+        { variant: 'success' }
       );
     } catch (e: any) {
-      Alert.alert('Failed to resend', e?.message ?? 'Please try again.');
+      AppAlert.alert(
+        'Failed to resend',
+        e?.message ?? 'Please try again.',
+        undefined,
+        { variant: 'error' }
+      );
     } finally {
       setResending(false);
     }

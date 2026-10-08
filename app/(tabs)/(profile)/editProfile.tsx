@@ -3,7 +3,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
-  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -15,6 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { AppAlert } from '@/components/ui/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -172,9 +172,11 @@ export default function EditProfileScreen() {
     if (isSubmitting) return;
 
     if (!token) {
-      Alert.alert(
+      AppAlert.alert(
         'Authentication error',
-        'Your session has expired. Please log in again.'
+        'Your session has expired. Please log in again.',
+        undefined,
+        { variant: 'error' }
       );
       return;
     }
@@ -199,15 +201,20 @@ export default function EditProfileScreen() {
       }
       await refreshProfile();
 
-      Alert.alert('Profile updated', 'Your profile has been updated.', [
-        { text: 'OK', onPress: handleGoBack },
-      ]);
+      AppAlert.alert(
+        'Profile updated',
+        'Your profile has been updated.',
+        [{ text: 'OK', onPress: handleGoBack }],
+        { variant: 'success' }
+      );
     } catch (error: any) {
       console.error('Failed to update patient profile:', error);
-      Alert.alert(
+      AppAlert.alert(
         'Unable to update profile',
         error?.message ??
-          'Something went wrong while saving your profile. Please try again.'
+          'Something went wrong while saving your profile. Please try again.',
+        undefined,
+        { variant: 'error' }
       );
     } finally {
       setIsSubmitting(false);
@@ -222,9 +229,11 @@ export default function EditProfileScreen() {
         await ImagePicker.requestMediaLibraryPermissionsAsync();
 
       if (status !== 'granted') {
-        Alert.alert(
+        AppAlert.alert(
           'Permission needed',
-          'Allow access to your photo library to change your profile picture.'
+          'Allow access to your photo library to change your profile picture.',
+          undefined,
+          { variant: 'warning' }
         );
         return;
       }
@@ -240,9 +249,11 @@ export default function EditProfileScreen() {
       }
     } catch (error) {
       console.error('Failed to select profile picture:', error);
-      Alert.alert(
+      AppAlert.alert(
         'Unable to select image',
-        'There was a problem selecting the image. Please try again.'
+        'There was a problem selecting the image. Please try again.',
+        undefined,
+        { variant: 'error' }
       );
     }
   };

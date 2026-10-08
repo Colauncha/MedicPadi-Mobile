@@ -66,6 +66,7 @@ const MAPPING = {
   'video.fill': 'videocam',
   'cross.case.fill': 'local-hospital',
   clock: 'schedule',
+  cart: 'shopping-cart',
 
   // Medical related
   stethoscope: 'medical-services', // Doctor (Stethoscope on iOS -> Medical Briefcase on Android)

@@ -12,12 +12,14 @@ interface AvatarProps {
   input: string;
   onPress?: (event: GestureResponderEvent) => void;
   size?: number; // Optional prop to easily scale the avatar
+  borderRadius?: number; // Optional prop to customize border radius
 }
 
 const AvatarFromString: React.FC<AvatarProps> = ({
   input,
   onPress,
   size = 50,
+  borderRadius, // Default to a circle
 }) => {
   // Fallback to a question mark if the string is empty
   const char =
@@ -27,7 +29,7 @@ const AvatarFromString: React.FC<AvatarProps> = ({
   const dynamicContainer = {
     width: size,
     height: size,
-    borderRadius: size / 2,
+    borderRadius: borderRadius ? borderRadius : size / 2,
   };
 
   const dynamicText = {

@@ -149,7 +149,10 @@ export default function DoctorProfileScreen() {
         color: theme.colors.textSecondary,
       },
       scroll: { flex: 1 },
-      scrollContent: { paddingHorizontal: theme.spacing.base },
+      scrollContent: {
+        paddingHorizontal: theme.spacing.base,
+        paddingBottom: theme.spacing.lg,
+      },
 
       heroCard: {
         backgroundColor: theme.colors.surfaceCardLight,
@@ -335,7 +338,7 @@ export default function DoctorProfileScreen() {
         backgroundColor: theme.colors.background,
         paddingHorizontal: theme.spacing.base,
         paddingVertical: theme.spacing.md,
-        paddingBottom: theme.spacing.xl,
+        paddingBottom: theme.spacing.xxl * 2,
         borderTopWidth: 1,
         borderTopColor: theme.colors.border,
       },

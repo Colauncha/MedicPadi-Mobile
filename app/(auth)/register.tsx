@@ -9,7 +9,6 @@ import { storage } from '@/utils/storage';
 import { Link, router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -17,6 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { AppAlert } from '@/components/ui/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const FRESH_REGISTRATION = 'fresh_registration';
@@ -50,17 +50,32 @@ const Register = () => {
       !password ||
       !confirmPassword
     ) {
-      Alert.alert('Missing fields', 'Please fill in all fields.');
+      AppAlert.alert(
+        'Missing fields',
+        'Please fill in all fields.',
+        undefined,
+        { variant: 'warning' }
+      );
       setLoading(false);
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert('Password mismatch', 'Passwords do not match.');
+      AppAlert.alert(
+        'Password mismatch',
+        'Passwords do not match.',
+        undefined,
+        { variant: 'warning' }
+      );
       setLoading(false);
       return;
     }
     if (password.length < 6) {
-      Alert.alert('Weak password', 'Password must be at least 6 characters.');
+      AppAlert.alert(
+        'Weak password',
+        'Password must be at least 6 characters.',
+        undefined,
+        { variant: 'warning' }
+      );
       setLoading(false);
       return;
     }
@@ -78,18 +93,28 @@ const Register = () => {
         router.navigate('/login');
       }
 
-      Alert.alert('Account created', 'You can now log in.', [
-        {
-          text: 'OK',
-          onPress: () => {
-            storage.setItem(FRESH_REGISTRATION, '1').catch(() => {});
-            router.navigate('/login');
+      AppAlert.alert(
+        'Account created',
+        'You can now log in.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              storage.setItem(FRESH_REGISTRATION, '1').catch(() => {});
+              router.navigate('/login');
+            },
           },
-        },
-      ]);
+        ],
+        { variant: 'success' }
+      );
     } catch (e: any) {
       console.log(e);
-      Alert.alert('Registration failed', e.message ?? 'Please try again.');
+      AppAlert.alert(
+        'Registration failed',
+        e.message ?? 'Please try again.',
+        undefined,
+        { variant: 'error' }
+      );
     } finally {
       setLoading(false);
     }

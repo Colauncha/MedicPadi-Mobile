@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { ComponentProps, useRef } from 'react';
+import { ComponentProps, useRef } from 'react';
 import {
   Modal,
   Platform,
@@ -26,6 +26,7 @@ interface ActionSheetProps {
   title?: string;
   options: ActionSheetOption[];
   onClose: () => void;
+  blurTarget?: React.RefObject<View | null>;
 }
 
 export const ActionSheet = ({
@@ -33,6 +34,7 @@ export const ActionSheet = ({
   title,
   options,
   onClose,
+  blurTarget,
 }: ActionSheetProps) => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
@@ -109,12 +111,12 @@ export const ActionSheet = ({
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
+      animationType="fade"
       onRequestClose={onClose}
       onDismiss={handleDismiss}
     >
       <Pressable style={styles.backdrop} onPress={onClose}>
-        <BlurBackground />
+        <BlurBackground target={blurTarget} />
         {/* Swallow presses on the sheet itself so they don't close it */}
         <Pressable
           style={[

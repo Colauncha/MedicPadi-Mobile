@@ -353,10 +353,19 @@ export enum ReviewProfileType {
   Laboratory = 'laboratory',
 }
 
-export interface ReviewResponseData {
+export interface CreateReviewPayload {
   message: string;
   rating: number;
   profile_type: ReviewProfileType;
+  profile_id: string;
+}
+
+export interface ReviewResponseData {
+  id?: string;
+  message: string;
+  rating: number;
+  profile_type: ReviewProfileType;
+  reviewer_id?: string;
   doctor_id?: string | null;
   pharmacy_id?: string | null;
   laboratory_id?: string | null;
@@ -769,11 +778,8 @@ export const apiVerifyTransaction = (reference: string, token: string) =>
 
 // ── Reviews ─────────────────────────────────────────────────────────
 
-export const apiSubmitReview = (
-  id: string,
-  data: ReviewResponseData,
-  token: string
-) => request<ReviewResponseData>('POST', `/profile/reviews/${id}`, data, token);
+export const apiSubmitReview = (data: CreateReviewPayload, token: string) =>
+  request<ReviewResponseData>('POST', '/profile/reviews', data, token);
 
 // ── Stats ─────────────────────────────────────────────────────────
 
@@ -790,6 +796,14 @@ export const apiRegisterDeviceNotif = (
     deviceName: string;
   }
 ) => request('POST', '/notifications/devices', data, token);
+
+export const getUnreadCount = (token: string) =>
+  request<{ count: number }>(
+    'GET',
+    '/notifications/unread-count',
+    undefined,
+    token
+  );
 
 export const apiGetNotifications = (
   params: Record<string, string | number | undefined> = {},

@@ -2,7 +2,6 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -12,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { AppAlert } from '@/components/ui/alert';
 
 import { Button } from '@/components/ui/Button';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -80,10 +80,8 @@ function getDayHours(
   if (!businessHours) return null;
   const day = WEEKDAY_KEYS[date.getDay()];
   const entry = businessHours[day] as
-    | { start: number | 'closed'; end: number | 'closed' }
-    | undefined;
-  if (!entry || entry.start === 'closed' || entry.end === 'closed')
-    return null;
+    { start: number | 'closed'; end: number | 'closed' } | undefined;
+  if (!entry || entry.start === 'closed' || entry.end === 'closed') return null;
   return { start: entry.start, end: entry.end };
 }
 
@@ -245,11 +243,15 @@ export default function BookAppointmentScreen() {
 
   const handleBook = async () => {
     if (!providerId) {
-      Alert.alert('No doctor selected');
+      AppAlert.alert('No doctor selected', undefined, undefined, {
+        variant: 'warning',
+      });
       return;
     }
     if (!selectedTime) {
-      Alert.alert('Select a time', 'Please choose a time slot.');
+      AppAlert.alert('Select a time', 'Please choose a time slot.', undefined, {
+        variant: 'warning',
+      });
       return;
     }
     setLoading(true);
@@ -266,13 +268,19 @@ export default function BookAppointmentScreen() {
         },
         token
       );
-      Alert.alert(
+      AppAlert.alert(
         'Appointment booked!',
         'Your appointment has been confirmed.',
-        [{ text: 'OK', onPress: () => router.back() }]
+        [{ text: 'OK', onPress: () => router.back() }],
+        { variant: 'success' }
       );
     } catch (e: any) {
-      Alert.alert('Booking failed', e.message ?? 'Please try again.');
+      AppAlert.alert(
+        'Booking failed',
+        e.message ?? 'Please try again.',
+        undefined,
+        { variant: 'error' }
+      );
     } finally {
       setLoading(false);
     }

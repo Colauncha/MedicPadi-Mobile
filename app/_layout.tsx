@@ -8,11 +8,14 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
+import { AlertHost } from '@/components/ui/alert';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { storage } from '@/utils/storage';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
 import { useColorScheme } from 'react-native';
+import * as Notifications from 'expo-notifications';
+import { handleNotificationNavigation } from '@/utils/notificationNavigation';
 
 export const unstable_settings = {
   initialRouteName: 'index',
@@ -143,11 +146,24 @@ SplashScreen.setOptions({
 export default function RootLayout() {
   const colorScheme = useColorScheme();
 
+  // useEffect(() => {
+  //   const subscription = Notifications.addNotificationResponseReceivedListener(
+  //     (response) => {
+  //       const data = response.notification.request.content.data;
+
+  //       handleNotificationNavigation(data || {});
+  //     }
+  //   );
+
+  //   return () => subscription.remove();
+  // }, []);
+
   return (
     <TP value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <ThemeProvider>
         <AuthProvider>
           <RootLayoutNav />
+          <AlertHost />
           <StatusBar style="auto" />
         </AuthProvider>
       </ThemeProvider>

@@ -11,8 +11,9 @@ export const PharmacyPage = () => {
       }}
     >
       <Stack.Screen name="index" options={{ title: 'Pharmacy' }} />
+      <Stack.Screen name="[id]" options={{ title: 'Pharmacy' }} />
       <Stack.Screen
-        name="[id]"
+        name="drug/[id]"
         options={{
           headerShown: true,
           title: 'Drug Details',

@@ -7,7 +7,6 @@ import { useThemedStyles } from '@/hooks/useThemedStyle';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -16,6 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { AppAlert } from '@/components/ui/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export const Login = () => {
@@ -28,7 +28,12 @@ export const Login = () => {
   const handleLogin = async () => {
     setLoading(true);
     if (!email || !password) {
-      Alert.alert('Missing fields', 'Please enter your email and password.');
+      AppAlert.alert(
+        'Missing fields',
+        'Please enter your email and password.',
+        undefined,
+        { variant: 'warning' }
+      );
       setLoading(false);
       return;
     }
@@ -36,9 +41,11 @@ export const Login = () => {
       await login(email, password);
       // router.replace(redirect[0])
     } catch (e: any) {
-      Alert.alert(
+      AppAlert.alert(
         'Login failed',
-        e.message ?? 'Invalid credentials. Please try again.'
+        e.message ?? 'Invalid credentials. Please try again.',
+        undefined,
+        { variant: 'error' }
       );
     } finally {
       setLoading(false);

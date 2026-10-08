@@ -30,8 +30,9 @@ export const LabPage = () => {
           },
         }}
       />
+      <Stack.Screen name="[id]" options={{ title: 'Laboratory' }} />
       <Stack.Screen
-        name="[id]"
+        name="appointment/[id]"
         options={{
           // headerShown: true,
           title: 'Appointment Details',

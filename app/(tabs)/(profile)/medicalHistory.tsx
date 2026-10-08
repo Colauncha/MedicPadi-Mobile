@@ -1,10 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import * as WebBrowser from 'expo-web-browser';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Linking,
   Pressable,
   RefreshControl,
@@ -14,6 +13,7 @@ import {
   View,
   Image,
 } from 'react-native';
+import { AppAlert } from '@/components/ui/alert';
 
 import AvatarFromString from '@/components/avatar';
 import { ActionSheet, ActionSheetOption } from '@/components/ui/ActionSheet';
@@ -35,6 +35,7 @@ import {
   ProfileFields,
 } from '@/services/api';
 import { useTheme } from '@/theme/ThemeProvider';
+import { BlurTargetView } from 'expo-blur';
 
 const formatDate = (iso: string): string => {
   try {
@@ -98,7 +99,12 @@ const requesterName = (
 };
 
 const comingSoon = (feature: string) =>
-  Alert.alert('Coming soon', `${feature} will be available soon.`);
+  AppAlert.alert(
+    'Coming soon',
+    `${feature} will be available soon.`,
+    undefined,
+    { variant: 'info' }
+  );
 
 const openReportLink = async (url: string) => {
   try {
@@ -107,7 +113,9 @@ const openReportLink = async (url: string) => {
     try {
       await Linking.openURL(url);
     } catch {
-      Alert.alert('Error', 'Unable to open this report.');
+      AppAlert.alert('Error', 'Unable to open this report.', undefined, {
+        variant: 'error',
+      });
     }
   }
 };
@@ -132,6 +140,8 @@ export default function MedicalHistoryScreen() {
   const [menuVisible, setMenuVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  const blurTarget = useRef<View>(null);
 
   const loadData = useCallback(async () => {
     if (!token) return;
@@ -263,9 +273,11 @@ export default function MedicalHistoryScreen() {
         )
       );
     } catch (e) {
-      Alert.alert(
+      AppAlert.alert(
         'Error',
-        e instanceof Error ? e.message : 'Something went wrong'
+        e instanceof Error ? e.message : 'Something went wrong',
+        undefined,
+        { variant: 'error' }
       );
     } finally {
       setActingId(null);
@@ -296,7 +308,7 @@ export default function MedicalHistoryScreen() {
     );
 
   const confirmRevoke = (consent: EHRConsent) => {
-    Alert.alert(
+    AppAlert.alert(
       'Revoke access',
       `${requesterName(consent, granteeProfiles.get(consent.granted_to_user_id))} will no longer be able to access your medical records.`,
       [
@@ -316,7 +328,7 @@ export default function MedicalHistoryScreen() {
   };
 
   const confirmDecline = (consent: EHRConsent) => {
-    Alert.alert(
+    AppAlert.alert(
       'Decline request',
       `Decline ${requesterName(consent, granteeProfiles.get(consent.granted_to_user_id))}'s request to access your medical records?`,
       [
@@ -562,6 +574,9 @@ export default function MedicalHistoryScreen() {
       statusNormalText: { color: theme.colors.success },
       statusWarningText: { color: theme.colors.warning },
       statusDangerText: { color: theme.colors.danger },
+      sheet: {
+        ...StyleSheet.absoluteFill,
+      },
     })
   );
 
@@ -778,56 +793,58 @@ export default function MedicalHistoryScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {sortedConsents.length > 0 && (
-          <>
-            <Text style={styles.sectionTitle}>Consent Requests</Text>
-            {sortedConsents.map(renderConsent)}
-          </>
-        )}
+      <BlurTargetView ref={blurTarget} style={styles.sheet}>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
+          {sortedConsents.length > 0 && (
+            <>
+              <Text style={styles.sectionTitle}>Consent Requests</Text>
+              {sortedConsents.map(renderConsent)}
+            </>
+          )}
 
-        {visibleSections.length === 0 ? (
-          <>
-            <Text
-              style={[
-                styles.sectionTitle,
-                sortedConsents.length > 0 && styles.sectionSpacing,
-              ]}
-            >
-              Medical Records
-            </Text>
-            <Text style={styles.emptyText}>No medical records found</Text>
-          </>
-        ) : (
-          visibleSections.map(({ type, title }, index) => (
-            <View key={type}>
+          {visibleSections.length === 0 ? (
+            <>
               <Text
                 style={[
                   styles.sectionTitle,
-                  (index > 0 || sortedConsents.length > 0) &&
-                    styles.sectionSpacing,
+                  sortedConsents.length > 0 && styles.sectionSpacing,
                 ]}
               >
-                {title}
+                Medical Records
               </Text>
-              {groupedRecords[type].map(renderRecord)}
-            </View>
-          ))
-        )}
-
-      </ScrollView>
+              <Text style={styles.emptyText}>No medical records found</Text>
+            </>
+          ) : (
+            visibleSections.map(({ type, title }, index) => (
+              <View key={type}>
+                <Text
+                  style={[
+                    styles.sectionTitle,
+                    (index > 0 || sortedConsents.length > 0) &&
+                      styles.sectionSpacing,
+                  ]}
+                >
+                  {title}
+                </Text>
+                {groupedRecords[type].map(renderRecord)}
+              </View>
+            ))
+          )}
+        </ScrollView>
+      </BlurTargetView>
 
       <ActionSheet
         visible={menuVisible}
         title={menu.title}
         options={menu.options}
         onClose={() => setMenuVisible(false)}
+        blurTarget={blurTarget}
       />
     </View>
   );

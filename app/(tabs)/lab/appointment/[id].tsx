@@ -1,25 +1,21 @@
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/Button';
-import { IconSymbol, IconSymbolName } from '@/components/ui/icon-symbol';
-import { MenuModal } from '@/components/ui/menuModal';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/context/AuthContext';
 import { useThemedStyles } from '@/hooks/useThemedStyle';
 import {
   AppointmentData,
   PaymentLinkAppointmentData,
   ProfileFields,
-  ReviewProfileType,
-  apiCancelAppointment,
   apiGetOneAppointment,
   apiGetProfileById,
-  apiSubmitReview,
-  apiVerifyTransaction,
 } from '@/services/api';
 import { useTheme } from '@/theme/ThemeProvider';
 import { Theme } from '@/theme/types';
 import { truncate } from '@/utils';
+import { getAge } from '@/utils/formatter';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -34,42 +30,32 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { AppAlert } from '@/components/ui/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-type Banner = {
-  message: string;
-  icon: IconSymbolName;
-  color: string;
-  borderColor: string;
-  bgColor: string;
-};
-
-const bannerConfig = (status: string, theme: Theme): Banner | null => {
+const bannerConfig = (status: string, theme: Theme): Record<string, any> => {
   switch (status) {
     case 'confirmed':
       return {
         message:
           'Your appointment is confirmed, you can proceed to make payment if you have not done so already.',
-        icon: 'checkmark',
-        color: theme.colors.primary.deep,
-        borderColor: theme.colors.primary.deep,
-        bgColor: theme.colors.primary.shallow,
+        icon: 'check-circle',
+        color: theme.colors.textSecondary,
+        borderColor: theme.colors.textSecondary,
+        bgColor: 'transparent',
       };
     case 'pending':
       return {
         message:
           'Your appointment is pending doctors confirmation. Once confirmed, you will be notified with a payment link.',
-        icon: 'clock',
+        icon: 'schedule',
         color: theme.colors.warning,
         borderColor: theme.colors.warning,
         bgColor: theme.colors.warningBg,
       };
     case 'cancelled':
-    case 'canceled':
       return {
         message: 'Your appointment has been cancelled.',
-        icon: 'xmark',
+        icon: 'cancel',
         color: theme.colors.danger,
         borderColor: theme.colors.danger,
         bgColor: theme.colors.dangerBg,
@@ -77,110 +63,99 @@ const bannerConfig = (status: string, theme: Theme): Banner | null => {
     case 'completed':
       return {
         message: 'Your appointment has been completed.',
-        icon: 'checkmark',
+        icon: 'check-circle',
         color: theme.colors.success,
         borderColor: theme.colors.success,
         bgColor: theme.colors.successBg,
       };
     default:
-      return null;
+      return {
+        message:
+          'Your appointment is confirmed, you can proceed to make payment if you have not done so already.',
+        icon: 'check-circle',
+        color: theme.colors.blue.base,
+        borderColor: theme.colors.blue.base,
+        bgColor: theme.colors.blue.deep,
+      };
   }
-};
-
-const RATING_LABELS: Record<number, string> = {
-  1: 'Poor',
-  2: 'Fair',
-  3: 'Good',
-  4: 'Very good',
-  5: 'Excellent',
 };
 
 const getPaymentStatusStyle = (
   status: string,
   theme: Theme
-): { color: string; bgColor: string } => {
+): Record<string, any> => {
   switch (status) {
     case 'payment_confirmed':
+      return { color: theme.colors.success, bgColor: theme.colors.successBg };
     case 'payment_completed':
       return { color: theme.colors.success, bgColor: theme.colors.successBg };
     case 'payment_pending':
       return { color: theme.colors.warning, bgColor: theme.colors.warningBg };
     case 'payment_failed':
+      return { color: theme.colors.danger, bgColor: theme.colors.dangerBg };
     case 'payment_cancelled':
       return { color: theme.colors.danger, bgColor: theme.colors.dangerBg };
     default:
-      return {
-        color: theme.colors.textMuted,
-        bgColor: theme.colors.surfaceCard,
-      };
+      return { color: theme.colors.success, bgColor: theme.colors.successBg };
   }
 };
 
 const BookingDetailsScreen = () => {
-  const { token } = useAuth();
-  const { id: bookingId } = useLocalSearchParams<{ id: string }>();
-  const { theme: appTheme } = useTheme();
+  const { token, user, profile } = useAuth();
 
-  const [doctor, setDoctor] = useState<ProfileFields | null>(null);
+  const { id: bookingId } = useLocalSearchParams();
+  // const bookingId = route.params?.bookingId;
+  const doctorId = user?.id;
+  const docData = profile?.profile;
+
+  const [patient, setPatient] = useState<ProfileFields | null>(null);
   const [appt, setAppt] = useState<
     AppointmentData | PaymentLinkAppointmentData | null
   >(null);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [verifying, setVerifying] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
-  const [reviewing, setReviewing] = useState(false);
-  const [rating, setRating] = useState(0);
-  const [reviewMessage, setReviewMessage] = useState('');
-  const [submittingReview, setSubmittingReview] = useState(false);
-  const [reviewed, setReviewed] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [banner, setBanner] = useState<Record<string, any> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
-    if (!bookingId || !token) return;
-    setError(null);
-    try {
-      const res = await apiGetOneAppointment(bookingId, token);
-      setAppt(res);
-      if (res.provider) {
-        setDoctor(res.provider);
-      } else {
-        apiGetProfileById(res.provider_id, 'consultant', token)
-          .then((doc) => setDoctor(doc.profile))
-          .catch(() => setDoctor(null));
-      }
-    } catch (e: any) {
-      setError(e?.message ?? 'Failed to load appointment');
-    } finally {
-      setLoading(false);
-    }
-  }, [bookingId, token]);
+  const { theme: appTheme } = useTheme();
 
   useEffect(() => {
-    if (!bookingId || !token) return;
+    if (!doctorId || !token) {
+      return;
+    }
 
-    const timeoutId = setTimeout(() => {
-      void loadData();
-    }, 0);
+    apiGetOneAppointment(bookingId as string, token)
+      .then((res) => {
+        setAppt(res);
+        apiGetProfileById(res.patient_id, 'patient', token)
+          .then((res) => setPatient(res.profile))
+          .catch((e) => setError(e.message ?? 'Failed to load profile'));
+        setBanner(bannerConfig(res.status, appTheme));
+      })
+      .catch((e) => setError(e.message ?? 'Failed to load appointment'))
+      .finally(() => setLoading(false));
+  }, [doctorId, token, bookingId, appTheme]);
 
-    return () => clearTimeout(timeoutId);
-  }, [bookingId, token, loadData]);
-
-  const handleReload = async () => {
-    setRefreshing(true);
-    await loadData();
-    setRefreshing(false);
+  const handleReload = () => {
+    setLoading(true);
+    setError(null);
+    if (doctorId && token) {
+      apiGetOneAppointment(bookingId as string, token)
+        .then((res) => {
+          setAppt(res);
+          apiGetProfileById(res.patient_id, 'patient', token)
+            .then((res) => setPatient(res.profile))
+            .catch((e) => setError(e.message ?? 'Failed to load profile'));
+          setBanner(bannerConfig(res.status, appTheme));
+        })
+        .catch((e) => setError(e.message ?? 'Failed to load appointment'))
+        .finally(() => setLoading(false));
+    }
   };
 
-  const fullName = doctor
-    ? [doctor.firstName, doctor.lastName].filter(Boolean).join(' ')
-    : '';
-  const doctorName = fullName ? `Dr. ${fullName}` : 'Doctor';
-
-  const status = appt?.status?.toLowerCase() ?? '';
-  const banner = bannerConfig(status, appTheme);
-  const isPaid = appt?.paymentStatus === 'payment_confirmed';
-  const isActive = status === 'pending' || status === 'confirmed';
+  const fullName = patient
+    ? [patient.firstName, patient.lastName].filter(Boolean).join(' ')
+    : 'Unnamed Patient';
 
   const apptType = appt?.description?.includes('–')
     ? appt.description.split('–')[0].trim()
@@ -190,15 +165,12 @@ const BookingDetailsScreen = () => {
     ? appt.description.split('–')[1].trim()
     : appt?.description;
 
-  const paymentStatusInfo = getPaymentStatusStyle(
-    appt?.paymentStatus?.toLowerCase() ?? '',
-    appTheme
-  );
-
-  const paymentLink =
-    appt && 'authorization_url' in appt
-      ? (appt as PaymentLinkAppointmentData)
-      : null;
+  const paymentStatusInfo = appt?.paymentStatus
+    ? getPaymentStatusStyle(appt.paymentStatus.toLowerCase(), appTheme)
+    : {
+        color: appTheme.colors.textMuted,
+        bgColor: appTheme.colors.surfaceCard,
+      };
 
   const appointmentDate = appt?.appointment_time
     ? new Date(appt.appointment_time).toLocaleString(undefined, {
@@ -211,147 +183,22 @@ const BookingDetailsScreen = () => {
       })
     : '—';
 
+  // const handleVerifyPayment = async () => {
+  //   const response = await apiVerifyTransaction(
+  //     paymentData.reference,
+  //     token || ''
+  //   );
+  //   if (response.status) {
+  //     handleReload();
+  //   }
+  // };
+
   const handleGoBack = () => {
     if (router.canGoBack()) {
       router.back();
       return;
     }
     router.replace('/appointments');
-  };
-
-  const handleJoinMeeting = () => {
-    if (!appt?.id) return;
-    router.push({
-      pathname: '/appointments/ZoomMeetingScreen',
-      params: { appointmentId: appt.id },
-    });
-  };
-
-  const handleCompletePayment = () => {
-    if (!paymentLink) return;
-    router.push({
-      pathname: '/appointments/PaymentWebViewScreen',
-      params: {
-        url: paymentLink.authorization_url,
-        reference: paymentLink.reference,
-      },
-    });
-  };
-
-  const handleVerifyPayment = async () => {
-    if (!paymentLink || !token) return;
-    setVerifying(true);
-    try {
-      const response = await apiVerifyTransaction(paymentLink.reference, token);
-      if (response.status && response.data?.status === 'success') {
-        await loadData();
-      } else {
-        AppAlert.alert(
-          'Payment not confirmed',
-          'We could not confirm this payment yet. If you have paid, try again in a moment.',
-          undefined,
-          { variant: 'error' }
-        );
-      }
-    } catch (e: any) {
-      AppAlert.alert(
-        'Verification failed',
-        e?.message ?? 'Please try again.',
-        undefined,
-        { variant: 'error' }
-      );
-    } finally {
-      setVerifying(false);
-    }
-  };
-
-  const handleReschedule = () => {
-    if (!appt?.provider_id) return;
-    router.push({
-      pathname: '/appointments/book',
-      params: { providerId: appt.provider_id, doctorName: fullName },
-    });
-  };
-
-  const handleReview = () => {
-    if (!appt?.provider_id) return;
-    setReviewing(true);
-  };
-
-  const handleSubmitReview = async () => {
-    if (!appt?.provider_id || !token) return;
-    const message = reviewMessage.trim();
-    if (rating < 1 || !message) {
-      AppAlert.alert(
-        'Incomplete review',
-        'Please add a rating and a short comment.',
-        undefined,
-        { variant: 'warning' }
-      );
-      return;
-    }
-    setSubmittingReview(true);
-    try {
-      await apiSubmitReview(
-        {
-          message,
-          rating,
-          profile_type: ReviewProfileType.Doctor,
-          profile_id: doctor?.id ?? appt.provider_id,
-        },
-        token
-      );
-      setReviewing(false);
-      setRating(0);
-      setReviewMessage('');
-      setReviewed(true);
-      AppAlert.alert(
-        'Thank you',
-        'Your review has been submitted.',
-        undefined,
-        { variant: 'success' }
-      );
-    } catch (e: any) {
-      AppAlert.alert(
-        'Error',
-        e?.message ?? 'Could not submit review.',
-        undefined,
-        { variant: 'error' }
-      );
-    } finally {
-      setSubmittingReview(false);
-    }
-  };
-
-  const handleCancel = () => {
-    if (!appt?.id || !token) return;
-    AppAlert.alert(
-      'Cancel Appointment',
-      'Are you sure you want to cancel this appointment?',
-      [
-        { text: 'No' },
-        {
-          text: 'Yes, cancel',
-          style: 'destructive',
-          onPress: async () => {
-            setCancelling(true);
-            try {
-              await apiCancelAppointment(appt.id, token);
-              await loadData();
-            } catch (e: any) {
-              AppAlert.alert(
-                'Error',
-                e?.message ?? 'Could not cancel appointment.',
-                undefined,
-                { variant: 'error' }
-              );
-            } finally {
-              setCancelling(false);
-            }
-          },
-        },
-      ]
-    );
   };
 
   const styles = useThemedStyles((theme) =>
@@ -361,19 +208,8 @@ const BookingDetailsScreen = () => {
         backgroundColor: theme.colors.background,
         paddingVertical: theme.spacing.xxl,
       },
-      center: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: theme.spacing.md,
-        paddingHorizontal: theme.spacing.xl,
-      },
-      errorText: {
-        fontSize: theme.typography.sizes.md,
-        color: theme.colors.danger,
-        textAlign: 'center',
-      },
-      scroll: { padding: theme.spacing.base, paddingBottom: 100 },
+      center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+      scroll: { padding: theme.spacing.base, paddingBottom: 48 },
 
       sectionTitle: {
         fontFamily: theme.typography.fonts?.rounded,
@@ -389,6 +225,7 @@ const BookingDetailsScreen = () => {
       },
 
       banner: {
+        backgroundColor: theme.colors.primary.shallow,
         padding: theme.spacing.md,
         borderRadius: theme.radius.xl,
         marginBottom: theme.spacing.base,
@@ -397,10 +234,12 @@ const BookingDetailsScreen = () => {
         alignItems: 'center',
         gap: theme.spacing.sm,
       },
+
       bannerText: {
-        flex: 1,
         fontFamily: theme.typography.fonts?.sans,
         fontSize: theme.typography.sizes.sm,
+        paddingRight: theme.spacing.lg,
+        color: theme.colors.primary.deep,
         textAlign: 'left',
       },
 
@@ -410,6 +249,7 @@ const BookingDetailsScreen = () => {
         padding: theme.spacing.base,
         marginBottom: theme.spacing.base,
       },
+
       heroInner: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -422,6 +262,7 @@ const BookingDetailsScreen = () => {
         marginBottom: theme.spacing.base,
         paddingVertical: theme.spacing.sm,
       },
+
       upperRowItem: {
         position: 'absolute',
         top: 7,
@@ -430,10 +271,12 @@ const BookingDetailsScreen = () => {
         justifyContent: 'center',
         alignItems: 'center',
       },
+
       upperRowText: {
         fontFamily: theme.typography.fonts?.rounded,
         color: theme.colors.text,
       },
+
       upperRowItemText: {
         fontSize: theme.typography.sizes.base,
         fontFamily: theme.typography.fonts?.mono,
@@ -467,11 +310,6 @@ const BookingDetailsScreen = () => {
         color: theme.colors.text,
         marginBottom: 4,
         textTransform: 'capitalize',
-      },
-      viewProfile: {
-        fontSize: theme.typography.sizes.sm,
-        color: theme.colors.purple.extraDeep,
-        textDecorationLine: 'underline',
       },
       card: {
         backgroundColor: theme.colors.surfaceCardLight,
@@ -521,8 +359,11 @@ const BookingDetailsScreen = () => {
         borderColor: theme.colors.border,
       },
       navArrow: {
+        width: 'auto',
+        flex: 1,
         flexDirection: 'row',
-        alignItems: 'center',
+        justifyContent: 'flex-end',
+        alignContent: 'center',
         padding: theme.spacing.sm,
       },
       navArrowText: {
@@ -530,6 +371,7 @@ const BookingDetailsScreen = () => {
         fontSize: theme.typography.sizes.md,
         color: theme.colors.primary.extraDeep,
         marginRight: theme.spacing.xs,
+        textAlignVertical: 'center',
       },
       uploadedFile: {
         flexDirection: 'column',
@@ -561,7 +403,6 @@ const BookingDetailsScreen = () => {
         marginBottom: theme.spacing.md,
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.border,
-        gap: theme.spacing.md,
       },
       paymentInfoLabel: {
         fontFamily: theme.typography.fonts?.sans,
@@ -569,7 +410,6 @@ const BookingDetailsScreen = () => {
         color: theme.colors.textMuted,
       },
       paymentInfoValue: {
-        flexShrink: 1,
         fontFamily: theme.typography.fonts?.sans,
         fontSize: theme.typography.sizes.sm,
         color: theme.colors.text,
@@ -590,6 +430,12 @@ const BookingDetailsScreen = () => {
         fontSize: theme.typography.sizes.base,
         color: theme.colors.textSecondary,
       },
+      paymentInfoRowLast: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: theme.spacing.md,
+      },
       paymentStatusRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -606,173 +452,77 @@ const BookingDetailsScreen = () => {
         fontSize: theme.typography.sizes.xs,
         textTransform: 'capitalize',
       },
-      paymentBtnRow: {
-        flexDirection: 'row',
-        gap: theme.spacing.sm,
-      },
       payNowBtn: {
-        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'space-between',
         gap: theme.spacing.sm,
-        backgroundColor: theme.colors.success,
+        backgroundColor: theme.colors.successBg,
         borderRadius: theme.radius.md,
         paddingHorizontal: theme.spacing.md,
         paddingVertical: theme.spacing.sm,
+        marginTop: theme.spacing.sm,
+        width: '48%',
       },
       payNowBtnText: {
         fontFamily: theme.typography.fonts?.rounded,
         fontSize: theme.typography.sizes.sm,
         color: theme.colors.mono.light,
       },
+
       verifyPaymentBtn: {
-        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: theme.spacing.sm,
         backgroundColor: theme.colors.blue.deep,
         borderRadius: theme.radius.md,
+        borderWidth: 1,
+        borderColor: theme.colors.blue.extraDeep,
         paddingHorizontal: theme.spacing.md,
         paddingVertical: theme.spacing.sm,
+        marginTop: theme.spacing.sm,
+        width: '48%',
       },
       verifyPaymentBtnText: {
         fontFamily: theme.typography.fonts?.rounded,
-        fontSize: theme.typography.sizes.sm,
+        fontSize: theme.typography.sizes.md,
         color: theme.colors.mono.light,
       },
 
-      primaryBtn: {
+      rescheduleBtn: {
         backgroundColor: theme.colors.primary.extraDeep,
         marginTop: theme.spacing.md,
+        color: theme.colors.mono.light,
       },
-
-      ghostBtn: {
-        marginTop: theme.spacing.md,
-      },
-
-      reviewDoctor: {
-        fontSize: theme.typography.sizes.md,
-        fontWeight: '600',
-        color: theme.colors.text,
-        textAlign: 'center',
-      },
-      stars: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        gap: theme.spacing.sm,
-        marginTop: theme.spacing.md,
-      },
-      starLabel: {
-        fontSize: theme.typography.sizes.sm,
-        color: theme.colors.textMuted,
-        textAlign: 'center',
-        marginTop: theme.spacing.xs,
-        marginBottom: theme.spacing.md,
-      },
-      reviewInput: {
-        minHeight: 100,
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-        borderRadius: theme.radius.md,
-        padding: theme.spacing.md,
-        fontSize: theme.typography.sizes.md,
-        color: theme.colors.text,
-        backgroundColor: theme.colors.background,
-        textAlignVertical: 'top',
-      },
-
       cancelBtn: {
         backgroundColor: theme.colors.dangerBg,
         marginTop: theme.spacing.md,
+        color: theme.colors.danger,
         borderColor: theme.colors.danger,
         borderWidth: 1,
       },
     })
   );
 
-  const renderReviewForm = () => (
-    <View>
-      <Text style={styles.reviewDoctor}>
-        How was your consultation with {doctorName}?
-      </Text>
-      <View style={styles.stars}>
-        {[1, 2, 3, 4, 5].map((n) => (
-          <Pressable key={n} onPress={() => setRating(n)} hitSlop={6}>
-            <IconSymbol
-              name={n <= rating ? 'star.fill' : 'star'}
-              size={34}
-              color={
-                n <= rating
-                  ? appTheme.colors.primary.deep
-                  : appTheme.colors.textMuted
-              }
-            />
-          </Pressable>
-        ))}
-      </View>
-      <Text style={styles.starLabel}>
-        {RATING_LABELS[rating] ?? 'Tap a star to rate'}
-      </Text>
-      <TextInput
-        style={styles.reviewInput}
-        value={reviewMessage}
-        onChangeText={setReviewMessage}
-        placeholder="Share your experience…"
-        placeholderTextColor={appTheme.colors.textMuted}
-        multiline
-        maxLength={500}
-      />
-      <Button
-        label="Submit Review"
-        onPress={handleSubmitReview}
-        loading={submittingReview}
-        disabled={rating < 1 || !reviewMessage.trim()}
-        style={styles.primaryBtn}
-      />
-    </View>
-  );
-
-  const header = (
-    <View style={styles.upperRow}>
-      <Pressable style={styles.upperRowItem} onPress={handleGoBack}>
-        <IconSymbol
-          name="chevron.left"
-          color={appTheme.colors.textMuted}
-          size={16}
-        />
-        <ThemedText style={styles.upperRowItemText}>Back</ThemedText>
-      </Pressable>
-      <ThemedText style={styles.upperRowText}>My Appointment</ThemedText>
-    </View>
-  );
-
-  if (loading || error || !appt) {
+  if (loading) {
     return (
-      <SafeAreaView style={styles.container} edges={[]}>
-        {header}
+      <SafeAreaView style={styles.container}>
         <View style={styles.center}>
-          {loading ? (
-            <ActivityIndicator
-              size="large"
-              color={appTheme.colors.primary.extraDeep}
-            />
-          ) : (
-            <>
-              <Text style={styles.errorText}>
-                {error ?? 'Appointment not found'}
-              </Text>
-              <Button
-                label="Try again"
-                variant="outline"
-                onPress={() => {
-                  setLoading(true);
-                  loadData();
-                }}
-              />
-            </>
-          )}
+          <ActivityIndicator
+            size="large"
+            color={appTheme.colors.primary.extraDeep}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.center}>
+          <Text>{error}</Text>
         </View>
       </SafeAreaView>
     );
@@ -784,40 +534,75 @@ const BookingDetailsScreen = () => {
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        {header}
+        {/* Header */}
+        <View style={styles.upperRow}>
+          <Pressable style={styles.upperRowItem} onPress={handleGoBack}>
+            <IconSymbol
+              name="chevron.left"
+              color={appTheme.colors.textMuted}
+              size={16}
+            />
+
+            <ThemedText style={styles.upperRowItemText}>Back</ThemedText>
+          </Pressable>
+
+          <ThemedText style={styles.upperRowText}>Appointment</ThemedText>
+        </View>
         <ScrollView
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleReload} />
+            <RefreshControl refreshing={loading} onRefresh={handleReload} />
           }
         >
           {/* Banner */}
-          {banner && (
+          {/* {banner && (
             <View
               style={[
                 styles.banner,
                 {
-                  borderColor: banner.borderColor,
-                  backgroundColor: banner.bgColor,
+                  borderColor: banner
+                    ? banner.borderColor
+                    : appTheme.colors.primary.extraDeep,
+                  backgroundColor: banner
+                    ? banner.bgColor
+                    : appTheme.colors.primary.shallow,
                 },
               ]}
             >
-              <IconSymbol name={banner.icon} size={24} color={banner.color} />
-              <Text style={[styles.bannerText, { color: banner.color }]}>
-                {banner.message}
+              <IconSymbol
+                name={banner ? banner.icon : 'checkmark'}
+                size={24}
+                color={banner ? banner.color : appTheme.colors.text}
+              />
+              <Text
+                style={[
+                  styles.bannerText,
+                  { color: banner ? banner.color : appTheme.colors.text },
+                ]}
+              >
+                {banner ? banner.message : 'confirmed'}
               </Text>
             </View>
-          )}
+          )} */}
 
-          {/* Doctor card */}
+          {/* Doctors card */}
           <View style={styles.heroCard}>
             <View style={styles.heroInner}>
-              <View style={styles.avatarWrapper}>
-                {doctor?.profilePicture?.url ? (
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() =>
+                  router.push({
+                    pathname: '/patients/[id]',
+                    params: { id: patient?.user_id ?? '' },
+                  })
+                }
+                style={styles.avatarWrapper}
+              >
+                {patient?.profilePicture?.url ? (
                   <Image
-                    source={{ uri: doctor.profilePicture.url }}
+                    source={{ uri: patient.profilePicture.url }}
                     style={styles.avatarImage}
                   />
                 ) : (
@@ -829,29 +614,19 @@ const BookingDetailsScreen = () => {
                     />
                   </View>
                 )}
-              </View>
+              </TouchableOpacity>
               <View style={styles.heroInfo}>
-                <Text style={styles.doctorName}>{doctorName}</Text>
+                <Text style={styles.doctorName}>{fullName}</Text>
                 <Text style={styles.doctorMeta}>
                   {[
-                    doctor?.speciality,
-                    doctor?.yearsOfService
-                      ? `${doctor.yearsOfService} yrs`
+                    patient?.gender,
+                    patient?.dateOfBirth
+                      ? `${getAge(patient.dateOfBirth, 'yrs')}`
                       : null,
                   ]
                     .filter(Boolean)
                     .join(' · ')}
                 </Text>
-                <TouchableOpacity
-                  onPress={() =>
-                    router.push({
-                      pathname: '/appointments/doctor/[id]',
-                      params: { id: appt.provider_id },
-                    })
-                  }
-                >
-                  <Text style={styles.viewProfile}>View profile</Text>
-                </TouchableOpacity>
               </View>
             </View>
           </View>
@@ -880,7 +655,7 @@ const BookingDetailsScreen = () => {
             <View style={styles.visitInfoRow}>
               <View style={styles.visitInfoIcon}>
                 <IconSymbol
-                  name="calendar"
+                  name="calendar.badge"
                   size={24}
                   color={appTheme.colors.primary.deep}
                 />
@@ -914,11 +689,14 @@ const BookingDetailsScreen = () => {
               <View style={styles.visitInfoContent}>
                 <Text style={styles.visitInfoLabel}>Duration</Text>
                 <Text style={styles.visitInfoText}>
-                  {(appt.sessions ?? 1) * (doctor?.sessionLength ?? 0)} minutes
+                  {appt?.sessions && docData?.sessionLength
+                    ? appt?.sessions * docData?.sessionLength
+                    : 0}{' '}
+                  minutes
                 </Text>
               </View>
             </View>
-            {isPaid && (
+            {appt?.paymentStatus === 'payment_confirmed' && (
               <View style={styles.visitInfoRow}>
                 <View style={styles.visitInfoIcon}>
                   <IconSymbol
@@ -930,12 +708,20 @@ const BookingDetailsScreen = () => {
                 <View style={styles.visitInfoContent}>
                   <Text style={styles.visitInfoLabel}>Meeting Link</Text>
                   <Text style={styles.visitInfoText}>
-                    {truncate(appt.join_link || '', 30)}
+                    {truncate(appt?.join_link || '', 30)}
                   </Text>
                 </View>
                 <TouchableOpacity
-                  onPress={handleJoinMeeting}
-                  disabled={!appt.meeting_id}
+                  // onPress={() =>
+                  //   router.navigate('/ZoomMeeting', {
+                  //     appointmentId: appt!.id,
+                  //     meetingNumber: String(appt!.meeting_id),
+                  //     meetingPassword: appt!.meeting_password,
+                  //     joinLink: appt?.join_link,
+                  //     meetingLink: appt?.meeting_link,
+                  //   })
+                  // }
+                  disabled={!appt?.meeting_id}
                   style={styles.navArrow}
                 >
                   <Text style={styles.navArrowText}>Join</Text>
@@ -959,13 +745,25 @@ const BookingDetailsScreen = () => {
               />
             </View>
           </View>
+          {/* {appt?.status === 'completed' && ( */}
+          {appt?.status && (
+            <View style={{ marginBottom: appTheme.spacing.base }}>
+              <Button
+                label="Reports and Review"
+                onPress={() => {}}
+                loading={loading}
+                disabled={!appt?.provider_id}
+                style={styles.rescheduleBtn}
+              />
+            </View>
+          )}
 
           {/* Uploaded Files */}
           <View style={styles.card}>
             <View>
               <Text style={styles.sectionTitle}>Uploaded Files</Text>
               <Text style={styles.sectionSubtitle}>
-                Here are the files you have uploaded for your appointment.
+                Here are the files uploaded for the appointment.
               </Text>
             </View>
             <View style={styles.uploadedFile}>
@@ -983,26 +781,29 @@ const BookingDetailsScreen = () => {
             <View>
               <Text style={styles.sectionTitle}>Payment Details</Text>
               <Text style={styles.sectionSubtitle}>
-                Here are the cost/payment details for your appointment.
+                Here is the payment details for your appointment.
               </Text>
             </View>
             <View style={styles.paymentInfoCard}>
               <View style={styles.paymentInfoRow}>
-                <Text style={styles.paymentInfoLabel}>Consultation fee</Text>
+                <Text style={styles.paymentInfoLabel}>Consulation fee</Text>
                 <Text style={styles.paymentInfoValue}>
-                  ₦{appt.sessionCost || '0.00'}
+                  ₦{appt?.sessionCost || '0.00'}
                 </Text>
               </View>
               <View style={styles.paymentInfoRow}>
                 <Text style={styles.paymentInfoLabel}>Sessions</Text>
                 <Text style={styles.paymentInfoValue}>
-                  {appt.sessions || 1}
+                  {appt?.sessions || 1}
                 </Text>
               </View>
               <View style={styles.paymentInfoTotalRow}>
                 <Text style={styles.paymentInfoTotalLabel}>Total</Text>
                 <Text style={styles.paymentInfoTotalValue}>
-                  ₦{((appt.sessionCost || 0) * (appt.sessions || 1)).toFixed(2)}
+                  ₦
+                  {((appt?.sessionCost || 0.0) * (appt?.sessions || 1)).toFixed(
+                    2
+                  )}
                 </Text>
               </View>
               <View style={styles.paymentStatusRow}>
@@ -1019,118 +820,50 @@ const BookingDetailsScreen = () => {
                       { color: paymentStatusInfo.color },
                     ]}
                   >
-                    {appt.paymentStatus?.split('_').join(' ') || 'Unpaid'}
+                    {appt?.paymentStatus?.split('_').join(' ') || 'Unpaid'}
                   </Text>
                 </View>
               </View>
             </View>
-
-            {status === 'confirmed' && !isPaid && paymentLink && (
-              <View style={styles.paymentInfoCard}>
-                <View style={styles.paymentInfoRow}>
-                  <Text style={styles.paymentInfoLabel}>Reference</Text>
-                  <Text style={styles.paymentInfoValue}>
-                    {paymentLink.reference}
-                  </Text>
-                </View>
-                <View style={styles.paymentInfoRow}>
-                  <Text style={styles.paymentInfoLabel}>Access Code</Text>
-                  <Text style={styles.paymentInfoValue}>
-                    {paymentLink.access_code}
-                  </Text>
-                </View>
-                <View style={styles.paymentBtnRow}>
-                  <TouchableOpacity
-                    style={styles.verifyPaymentBtn}
-                    onPress={handleVerifyPayment}
-                    disabled={verifying}
-                    activeOpacity={0.8}
-                  >
-                    {verifying ? (
-                      <ActivityIndicator
-                        size="small"
-                        color={appTheme.colors.mono.light}
-                      />
-                    ) : (
-                      <Text style={styles.verifyPaymentBtnText}>
-                        Verify Payment
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.payNowBtn}
-                    onPress={handleCompletePayment}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.payNowBtnText}>Complete Payment</Text>
-                    <IconSymbol
-                      name="arrow.up.right"
-                      size={14}
-                      color={appTheme.colors.mono.light}
-                    />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
           </View>
 
           {/* Buttons */}
-          {status === 'confirmed' && isPaid && (
+          <View style={{}}>
             <Button
-              label="Join Meeting"
-              onPress={handleJoinMeeting}
-              disabled={!appt.meeting_id}
-              style={styles.primaryBtn}
+              label={
+                appt?.status === 'confirmed'
+                  ? 'Join meeting'
+                  : 'Accept Appointment'
+              }
+              // onPress={() =>
+              //   router.navigate('/reschedule', {
+              //     providerId: appt?.provider_id,
+              //   })
+              // }
+              onPress={() => {}}
+              loading={loading}
+              disabled={
+                (appt?.status === 'confirmed' &&
+                  appt?.paymentStatus !== 'payment_confirmed') ||
+                !appt?.provider_id
+              }
+              style={styles.rescheduleBtn}
             />
-          )}
-          {isActive && (
-            <>
-              <Button
-                label="Reschedule Appointment"
-                variant={isPaid ? 'outline' : 'primary'}
-                onPress={handleReschedule}
-                disabled={!appt.provider_id}
-                style={
-                  isPaid
-                    ? { marginTop: appTheme.spacing.md }
-                    : styles.primaryBtn
-                }
-              />
-              <Button
-                label="Cancel Appointment"
-                variant="ghost"
-                onPress={handleCancel}
-                loading={cancelling}
-                style={styles.cancelBtn}
-                textStyle={{ color: appTheme.colors.danger }}
-              />
-            </>
-          )}
-          {!isActive && (
             <Button
-              label="Book Again"
-              onPress={handleReschedule}
-              disabled={!appt.provider_id}
-              style={styles.primaryBtn}
+              label="Cancel Appointment"
+              // onPress={() =>
+              //   router.navigate('/cancel-appointment', {
+              //     providerId: appt?.provider_id,
+              //   })
+              // }
+              onPress={() => {}}
+              loading={loading}
+              disabled={!appt?.provider_id}
+              style={styles.cancelBtn}
+              textStyle={{ color: appTheme.colors.danger }}
             />
-          )}
-          {status === 'completed' && (
-            <Button
-              label={reviewed ? 'Reviewed' : 'Review Doctor'}
-              variant="outline"
-              onPress={handleReview}
-              disabled={!appt.provider_id || reviewed}
-              style={styles.ghostBtn}
-            />
-          )}
+          </View>
         </ScrollView>
-
-        <MenuModal
-          visible={reviewing}
-          title="Review Doctor"
-          onClose={() => setReviewing(false)}
-          renderView={renderReviewForm}
-        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

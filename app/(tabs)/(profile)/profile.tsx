@@ -9,7 +9,6 @@ import { Href, router } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Image,
   RefreshControl,
   ScrollView,
@@ -17,6 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { AppAlert } from '@/components/ui/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const ProfilePage = () => {
@@ -280,7 +280,7 @@ const ProfilePage = () => {
   }, [refreshProfile]);
 
   const handleLogout = () => {
-    Alert.alert('Log Out', 'Are you sure you want to log out?', [
+    AppAlert.alert('Log Out', 'Are you sure you want to log out?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Log Out', style: 'destructive', onPress: () => logout() },
     ]);
@@ -299,9 +299,11 @@ const ProfilePage = () => {
       await apiSendVerificationEmail(token);
       router.push({ pathname: '/verifyEmail', params: { sent: '1' } });
     } catch (e: any) {
-      Alert.alert(
+      AppAlert.alert(
         'Failed',
-        e?.message ?? 'Could not send verification email. Try again.'
+        e?.message ?? 'Could not send verification email. Try again.',
+        undefined,
+        { variant: 'error' }
       );
     } finally {
       setSendingVerification(false);

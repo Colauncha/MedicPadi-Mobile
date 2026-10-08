@@ -3,7 +3,6 @@ import { Href, router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -12,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { AppAlert } from '@/components/ui/alert';
 
 import AvatarFromString from '@/components/avatar';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
@@ -25,6 +25,7 @@ import {
   apiListProfiles,
   AppointmentData,
   AuthUser,
+  getUnreadCount,
   ProfileData,
   ProfileFields,
 } from '@/services/api';
@@ -43,6 +44,12 @@ interface DashStats {
 
 let emailVerificationAlertShown = false;
 let profileCompletionAlertShown = false;
+
+const resolveUnreadCount = (count: number) => {
+  if (count > 99) return '99+';
+  else if (count > 9) return '9+';
+  return String(count);
+};
 
 const formatApptTime = (iso: string) => {
   try {
@@ -76,12 +83,14 @@ const DashboardHeaderElement = ({
   stats,
   loading,
   appTheme,
+  unreadCount,
 }: {
   user: AuthUser | null;
   profile: ProfileData | null;
   stats: DashStats;
   loading: boolean;
   appTheme: Theme;
+  unreadCount: number;
 }) => {
   const styles = useThemedStyles((theme) =>
     StyleSheet.create({
@@ -153,6 +162,19 @@ const DashboardHeaderElement = ({
         fontWeight: '200',
         marginBottom: theme.spacing.lg,
       },
+      unreadCount: {
+        position: 'absolute',
+        top: -5,
+        right: -5,
+        backgroundColor: theme.colors.danger,
+        borderRadius: theme.radius.full,
+      },
+      unreadCountText: {
+        color: theme.colors.mono.light,
+        fontSize: theme.typography.sizes.xs,
+        fontWeight: 'bold',
+        paddingHorizontal: 6,
+      },
     })
   );
 
@@ -187,13 +209,23 @@ const DashboardHeaderElement = ({
           contentFit="contain"
         />
         <View style={styles.logoRowIcons}>
-          <Pressable onPress={() => router.push('/notifications')}>
+          <Pressable
+            onPress={() => router.push('/notifications')}
+            style={{ position: 'relative' }}
+          >
             <IconSymbol
               name="bell.fill"
               size={24}
               style={styles.icons}
-              color={appTheme.colors.mono.darkGray}
+              color={appTheme.colors.mono.dark}
             />
+            {unreadCount > 0 && (
+              <View style={styles.unreadCount}>
+                <ThemedText style={styles.unreadCountText}>
+                  {resolveUnreadCount(unreadCount) || 0}
+                </ThemedText>
+              </View>
+            )}
           </Pressable>
           <Pressable onPress={() => router.push('/profile')}>
             {profile?.profile.profilePicture?.url ? (
@@ -207,7 +239,7 @@ const DashboardHeaderElement = ({
                 name="person.fill"
                 size={24}
                 style={styles.icons}
-                color={appTheme.colors.mono.darkGray}
+                color={appTheme.colors.mono.dark}
               />
             )}
           </Pressable>
@@ -274,9 +306,9 @@ const ProviderCard = ({
         width: 240,
         marginRight: theme.spacing.md,
         overflow: 'hidden',
-        padding: theme.spacing.md
+        padding: theme.spacing.md,
       },
-      image: { width: 80, height: 80, borderRadius: theme.radius.full },
+      image: { width: 80, height: 80, borderRadius: 10 },
       info: {
         flex: 1,
         padding: theme.spacing.md,
@@ -315,7 +347,7 @@ const ProviderCard = ({
           contentFit="cover"
         />
       ) : (
-        <AvatarFromString input={name} size={80} />
+        <AvatarFromString input={name} size={80} borderRadius={10} />
       )}
       <View style={styles.info}>
         <Text style={styles.name} numberOfLines={2}>
@@ -359,6 +391,7 @@ export default function HomeScreen() {
     labs: 0,
     pastAppointments: 0,
   });
+  const [unreadCount, setUnreadCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -369,7 +402,7 @@ export default function HomeScreen() {
 
     if (!emailVerificationAlertShown && isVerified === false) {
       emailVerificationAlertShown = true;
-      Alert.alert(
+      AppAlert.alert(
         'Verify Your Email',
         'Please verify your email address to access all features.',
         [
@@ -382,7 +415,7 @@ export default function HomeScreen() {
       );
     } else if (!profileCompletionAlertShown && isComplete === false) {
       profileCompletionAlertShown = true;
-      Alert.alert(
+      AppAlert.alert(
         'Complete Your Profile',
         'Your profile is incomplete. Complete it now to get the best experience.',
         [
@@ -399,15 +432,23 @@ export default function HomeScreen() {
   const loadData = useCallback(async () => {
     if (!token) return;
     try {
-      const [doctorsRes, pharmaRes, labRes, pendingRes, confirmedRes, pastRes] =
-        await Promise.allSettled([
-          apiListProfiles({ role: 'consultant', limit: 10 }, token),
-          apiListProfiles({ role: 'pharmacy', limit: 10 }, token),
-          apiListProfiles({ role: 'lab', limit: 10 }, token),
-          apiGetAppointments({ status: 'pending', limit: 5 }, token),
-          apiGetAppointments({ status: 'confirmed', limit: 5 }, token),
-          apiGetAppointments({ status: 'completed', limit: 5 }, token),
-        ]);
+      const [
+        doctorsRes,
+        pharmaRes,
+        labRes,
+        pendingRes,
+        confirmedRes,
+        pastRes,
+        unreadCountRes,
+      ] = await Promise.allSettled([
+        apiListProfiles({ role: 'consultant', limit: 10 }, token),
+        apiListProfiles({ role: 'pharmacy', limit: 10 }, token),
+        apiListProfiles({ role: 'lab', limit: 10 }, token),
+        apiGetAppointments({ status: 'pending', limit: 5 }, token),
+        apiGetAppointments({ status: 'confirmed', limit: 5 }, token),
+        apiGetAppointments({ status: 'completed', limit: 5 }, token),
+        getUnreadCount(token),
+      ]);
 
       const listOf = <T,>(res: PromiseSettledResult<{ data: T[] }>) =>
         res.status === 'fulfilled' && Array.isArray(res.value.data)
@@ -435,6 +476,9 @@ export default function HomeScreen() {
       const recent = listOf(pastRes).slice(0, 2);
       setUpcomingAppt(upcoming);
       setRecentAppts(recent);
+      setUnreadCount(
+        unreadCountRes.status === 'fulfilled' ? unreadCountRes.value.count : 0
+      );
 
       // Fetch the doctors behind the upcoming and recent appointments
       const providerIds = Array.from(
@@ -756,6 +800,7 @@ export default function HomeScreen() {
           stats={stats}
           loading={loading}
           appTheme={appTheme}
+          unreadCount={unreadCount}
         />
       }
     >
