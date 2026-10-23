@@ -1,6 +1,10 @@
 // import { useThemedStyles } from '@/hooks/useThemedStyle';
 import { useTheme } from '@/theme/ThemeProvider';
 import { Stack } from 'expo-router';
+
+export const unstable_settings = {
+  anchor: 'profile',
+};
 // import { StyleSheet } from 'react-native';
 
 export const ProfilePage = () => {

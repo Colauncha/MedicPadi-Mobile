@@ -165,7 +165,7 @@ export default function EditProfileScreen() {
       router.back();
       return;
     }
-    router.replace('/profile');
+    router.replace('/profile', { withAnchor: true });
   };
 
   const handleSubmit = async () => {

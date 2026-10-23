@@ -1,6 +1,10 @@
 import { useTheme } from '@/theme/ThemeProvider';
 import { Stack } from 'expo-router';
 
+export const unstable_settings = {
+  anchor: 'index',
+};
+
 export const PharmacyPage = () => {
   const { theme } = useTheme();
 
@@ -30,6 +34,8 @@ export const PharmacyPage = () => {
           },
         }}
       />
+      <Stack.Screen name="drug/viewAll" />
+      <Stack.Screen name="checkout" />
     </Stack>
   );
 };

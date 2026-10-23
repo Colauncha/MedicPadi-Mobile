@@ -16,6 +16,7 @@ import {
   apiLogin,
   apiLogout,
   apiRegister,
+  apiRegisterDeviceNotif,
   clearStoredToken,
   clearStoredUser,
   getStoredToken,
@@ -24,6 +25,8 @@ import {
   storeToken,
   storeUser,
 } from '../services/api';
+import { Platform } from 'react-native';
+import { registerForPushNotifications } from '@/services/registerForPush';
 
 interface AuthContextType {
   token: string | null;
@@ -204,6 +207,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(authUser || null);
     setProfile(profileRes);
     setIsLoggedIn(true);
+    const expoNotifToken = await registerForPushNotifications();
+    if (Platform.OS === 'web') {
+      // SETUP Device registration for web
+    } else if (Platform.OS === 'android' || Platform.OS === 'ios') {
+      await apiRegisterDeviceNotif(accessToken, {
+        platform: Platform.OS,
+        token: expoNotifToken.token,
+        deviceName: expoNotifToken.device,
+      });
+    } else {
+      return;
+    }
   };
 
   const register = async (data: RegisterData) => {

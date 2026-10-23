@@ -87,8 +87,7 @@ const leaveScreen = (appointmentId?: string) => {
     return;
   }
   router.replace(
-    appointmentId ? `/appointments/${appointmentId}` : '/appointments'
-  );
+    appointmentId ? `/appointments/${appointmentId}` : '/appointments', { withAnchor: true });
 };
 
 const ZoomMeetingContent = ({

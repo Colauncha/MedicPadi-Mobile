@@ -138,7 +138,7 @@ export default function DoctorsBySpecialityScreen() {
           router.push({
             pathname: '/appointments/doctor/[id]',
             params: { id: item.user_id },
-          })
+          }, { withAnchor: true })
         }
       >
         {item.profilePicture?.url ? (

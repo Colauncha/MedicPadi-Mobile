@@ -590,7 +590,7 @@ export default function DoctorProfileScreen() {
             router.push({
               pathname: '/appointments/book',
               params: { providerId: doctorId, doctorName: fullName },
-            })
+            }, { withAnchor: true })
           }
         >
           <Text style={styles.ctaText}>Book Appointment</Text>

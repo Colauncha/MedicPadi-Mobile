@@ -198,7 +198,7 @@ const BookingDetailsScreen = () => {
       router.back();
       return;
     }
-    router.replace('/appointments');
+    router.replace('/appointments', { withAnchor: true });
   };
 
   const styles = useThemedStyles((theme) =>
@@ -596,7 +596,7 @@ const BookingDetailsScreen = () => {
                   router.push({
                     pathname: '/patients/[id]',
                     params: { id: patient?.user_id ?? '' },
-                  })
+                  }, { withAnchor: true })
                 }
                 style={styles.avatarWrapper}
               >

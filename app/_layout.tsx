@@ -10,6 +10,7 @@ import 'react-native-reanimated';
 
 import { AlertHost } from '@/components/ui/alert';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { CartProvider } from '@/context/CartContext';
 import { storage } from '@/utils/storage';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
@@ -146,25 +147,27 @@ SplashScreen.setOptions({
 export default function RootLayout() {
   const colorScheme = useColorScheme();
 
-  // useEffect(() => {
-  //   const subscription = Notifications.addNotificationResponseReceivedListener(
-  //     (response) => {
-  //       const data = response.notification.request.content.data;
+  useEffect(() => {
+    const subscription = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        const data = response.notification.request.content.data;
 
-  //       handleNotificationNavigation(data || {});
-  //     }
-  //   );
+        handleNotificationNavigation(data || {});
+      }
+    );
 
-  //   return () => subscription.remove();
-  // }, []);
+    return () => subscription.remove();
+  }, []);
 
   return (
     <TP value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <ThemeProvider>
         <AuthProvider>
-          <RootLayoutNav />
-          <AlertHost />
-          <StatusBar style="auto" />
+          <CartProvider>
+            <RootLayoutNav />
+            <AlertHost />
+            <StatusBar style="auto" />
+          </CartProvider>
         </AuthProvider>
       </ThemeProvider>
     </TP>

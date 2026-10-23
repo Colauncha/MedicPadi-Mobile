@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/Button';
 import { IconSymbol, IconSymbolName } from '@/components/ui/icon-symbol';
-import { MenuModal } from '@/components/ui/menuModal';
+import MenuModal from '@/components/ui/menuModal';
 import { useAuth } from '@/context/AuthContext';
 import { useThemedStyles } from '@/hooks/useThemedStyle';
 import {
@@ -10,6 +10,7 @@ import {
   ProfileFields,
   ReviewProfileType,
   apiCancelAppointment,
+  apiConfirmAppointment,
   apiGetOneAppointment,
   apiGetProfileById,
   apiSubmitReview,
@@ -216,26 +217,32 @@ const BookingDetailsScreen = () => {
       router.back();
       return;
     }
-    router.replace('/appointments');
+    router.replace('/appointments', { withAnchor: true });
   };
 
   const handleJoinMeeting = () => {
     if (!appt?.id) return;
-    router.push({
-      pathname: '/appointments/ZoomMeetingScreen',
-      params: { appointmentId: appt.id },
-    });
+    router.push(
+      {
+        pathname: '/appointments/ZoomMeetingScreen',
+        params: { appointmentId: appt.id },
+      },
+      { withAnchor: true }
+    );
   };
 
   const handleCompletePayment = () => {
     if (!paymentLink) return;
-    router.push({
-      pathname: '/appointments/PaymentWebViewScreen',
-      params: {
-        url: paymentLink.authorization_url,
-        reference: paymentLink.reference,
+    router.push(
+      {
+        pathname: '/appointments/PaymentWebViewScreen',
+        params: {
+          url: paymentLink.authorization_url,
+          reference: paymentLink.reference,
+        },
       },
-    });
+      { withAnchor: true }
+    );
   };
 
   const handleVerifyPayment = async () => {
@@ -267,15 +274,35 @@ const BookingDetailsScreen = () => {
 
   const handleReschedule = () => {
     if (!appt?.provider_id) return;
-    router.push({
-      pathname: '/appointments/book',
-      params: { providerId: appt.provider_id, doctorName: fullName },
-    });
+    router.push(
+      {
+        pathname: '/appointments/book',
+        params: { providerId: appt.provider_id, doctorName: fullName },
+      },
+      { withAnchor: true }
+    );
   };
 
   const handleReview = () => {
     if (!appt?.provider_id) return;
     setReviewing(true);
+  };
+
+  const handleConfirm = () => {
+    if (!appt?.id || !token) return;
+    AppAlert.alert(
+      'Confirm Appointment',
+      'By proceeding you confirm that you have been attended to by the doctor.',
+      [
+        {
+          text: 'Confirm',
+          onPress: () => {
+            apiConfirmAppointment(appt?.id, token);
+          },
+        },
+      ],
+      { variant: 'warning', cancelable: true }
+    );
   };
 
   const handleSubmitReview = async () => {
@@ -844,10 +871,13 @@ const BookingDetailsScreen = () => {
                 </Text>
                 <TouchableOpacity
                   onPress={() =>
-                    router.push({
-                      pathname: '/appointments/doctor/[id]',
-                      params: { id: appt.provider_id },
-                    })
+                    router.push(
+                      {
+                        pathname: '/appointments/doctor/[id]',
+                        params: { id: appt.provider_id },
+                      },
+                      { withAnchor: true }
+                    )
                   }
                 >
                   <Text style={styles.viewProfile}>View profile</Text>
@@ -1120,6 +1150,14 @@ const BookingDetailsScreen = () => {
               variant="outline"
               onPress={handleReview}
               disabled={!appt.provider_id || reviewed}
+              style={styles.ghostBtn}
+            />
+          )}
+          {status === 'completed' && (
+            <Button
+              label="Confirm appointment is complete"
+              variant="outline"
+              onPress={handleConfirm}
               style={styles.ghostBtn}
             />
           )}

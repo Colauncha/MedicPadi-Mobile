@@ -133,6 +133,7 @@ export function AppHeader({
         fontWeight: '600',
         color: theme.colors.text,
         textAlign: 'center',
+        textTransform: 'capitalize',
       },
 
       subtitle: {

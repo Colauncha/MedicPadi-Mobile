@@ -268,8 +268,12 @@ export interface DrugData {
   requiresPrescription?: boolean;
   dosage?: string;
   composition?: string;
-  imageUrl?: string;
+  drugImage?: { public_id: string; url: string };
   category?: { id: string; name: string };
+  stock: number | null;
+  sideEffect: string;
+  linkToMedWebsite: string;
+  user_id?: string | null;
 }
 
 export interface LabTestData {
@@ -433,6 +437,20 @@ export interface NotificationData {
   sent_at: string;
 }
 
+export type SearchTypes =
+  | 'doctors'
+  | 'pharmacies'
+  | 'laboratories'
+  | 'drugs'
+  | 'labTests';
+
+export interface SearchResults {
+  doctors: { data: ProfileFields[]; total: number };
+  pharmacies: { data: ProfileFields[]; total: number };
+  laboratories: { data: ProfileFields[]; total: number };
+  drugs: { data: DrugData[]; total: number };
+  labTests: { data: LabTestData[]; total: number };
+}
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
 export const apiRegister = (data: RegisterData) =>
@@ -603,6 +621,14 @@ export const apiCompleteAppointment = (id: string, token: string) =>
     token
   );
 
+export const apiConfirmAppointment = (id: string, token: string) =>
+  request<CompleteAppointmentResponse>(
+    'PATCH',
+    `/orders/appointments/${id}/confirm`,
+    undefined,
+    token
+  );
+
 export const apiBookAppointment = (
   data: {
     provider_id: string;
@@ -766,7 +792,7 @@ export const apiCreateDrugRequisition = (
   token: string
 ) => request<unknown>('POST', '/orders/drug-requisitions', data, token);
 
-// ── Transactions ─────────────────────────────────────────────────────────
+// ── Transactions and Wallet ─────────────────────────────────────────────────────────
 
 export const apiVerifyTransaction = (reference: string, token: string) =>
   request<TransactionVerifyResponse>(
@@ -781,10 +807,20 @@ export const apiVerifyTransaction = (reference: string, token: string) =>
 export const apiSubmitReview = (data: CreateReviewPayload, token: string) =>
   request<ReviewResponseData>('POST', '/profile/reviews', data, token);
 
-// ── Stats ─────────────────────────────────────────────────────────
+// ── Stats and search ────────────────────────────────────────────────────
 
 export const apiGetDoctorStats = (token: string) =>
   request<DoctorStatsResponse>('GET', '/orders/stats/doctor', undefined, token);
+
+export const apiSearch = (
+  params: {
+    q: string;
+    limit?: number;
+    types?: SearchTypes;
+  },
+  token: string
+) => request<SearchResults>('GET', `/search${toQS(params)}`, undefined, token);
+
 
 // ── Notification ─────────────────────────────────────────────────────────
 

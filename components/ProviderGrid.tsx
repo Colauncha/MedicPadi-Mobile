@@ -216,7 +216,7 @@ export default function ProviderGrid({
           router.push({
             pathname: role === 'lab' ? '/lab/[id]' : '/pharmacy/[id]',
             params: { id: item.user_id },
-          })
+          }, { withAnchor: true })
         }
       >
         <View style={styles.avatarWrapper}>

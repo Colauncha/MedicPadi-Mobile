@@ -79,7 +79,7 @@ export const AppointmentCard = ({
         // flexDirection: 'row',
         ...{ ...extraStyle },
       }}
-      onPress={() => router.push(`/appointments/${appointment.id}` as any)}
+      onPress={() => router.push(`/appointments/${appointment.id}` as any, { withAnchor: true })}
     >
       {/* Optional Image */}
       <View
@@ -234,7 +234,7 @@ export const PatientAppointmentCard = ({
     router.push({
       pathname: '/appointments/[id]',
       params: { id: appointment.id },
-    });
+    }, { withAnchor: true });
 
   return (
     <TouchableOpacity
@@ -343,7 +343,7 @@ export const PatientAppointmentCard = ({
                   providerId: appointment.provider_id,
                   doctorName: name,
                 },
-              })
+              }, { withAnchor: true })
             }
           />
           <Button
@@ -449,7 +449,7 @@ export const AppointmentRequestRow = ({
           {formatTime(appointment.appointment_time)}
         </Text>
         <TouchableOpacity
-          onPress={() => router.push(`/appointments/${appointment.id}` as any)}
+          onPress={() => router.push(`/appointments/${appointment.id}` as any, { withAnchor: true })}
         >
           <Text
             style={{

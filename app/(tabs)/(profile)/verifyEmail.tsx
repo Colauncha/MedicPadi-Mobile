@@ -101,7 +101,7 @@ export default function VerifyEmailScreen() {
           {
             text: 'OK',
             onPress: () =>
-              router.canGoBack() ? router.back() : router.replace('/profile'),
+              router.canGoBack() ? router.back() : router.replace('/profile', { withAnchor: true }),
           },
         ],
         { variant: 'success' }

@@ -178,7 +178,7 @@ export default function SpecialityGrid() {
                 router.push({
                   pathname: '/appointments/speciality/[speciality]',
                   params: { speciality: item.key, label: item.label },
-                })
+                }, { withAnchor: true })
               }
             >
               <View

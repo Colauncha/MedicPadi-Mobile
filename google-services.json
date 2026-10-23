@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "133035009804",
+    "project_id": "colauncha-apps",
+    "storage_bucket": "colauncha-apps.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:133035009804:android:dd2252822410f6d68b4b29",
+        "android_client_info": {
+          "package_name": "com.colauncha.medicpadi"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAFdUv6SuAo64v5VeXTJ-Y28kbZBVkLWgQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:133035009804:android:1f7c77bf5e08bfe48b4b29",
+        "android_client_info": {
+          "package_name": "com.colauncha_dev.medicpadimobileproviders"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAFdUv6SuAo64v5VeXTJ-Y28kbZBVkLWgQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

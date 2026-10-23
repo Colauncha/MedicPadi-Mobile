@@ -1,158 +1,3 @@
-// import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-
-// import { useThemedStyles } from '@/hooks/useThemedStyle';
-
-// // TODO: replace with notifications from the API once an endpoint exists
-// const notifications = [
-//   {
-//     id: '1',
-//     icon: '📅',
-//     title: 'Appointment Confirmed',
-//     message:
-//       'Your appointment with Dr. Ajayi on 26 Feb at 10:00 AM has been confirmed.',
-//     time: '2 hours ago',
-//     read: false,
-//   },
-//   {
-//     id: '2',
-//     icon: '🧪',
-//     title: 'Lab Results Ready',
-//     message: 'Your Complete Blood Count (CBC) results are now available.',
-//     time: '5 hours ago',
-//     read: false,
-//   },
-//   {
-//     id: '3',
-//     icon: '💊',
-//     title: 'Prescription Reminder',
-//     message: 'Remember to take your Lisinopril 10mg today.',
-//     time: '1 day ago',
-//     read: true,
-//   },
-//   {
-//     id: '4',
-//     icon: '👨‍⚕️',
-//     title: 'Doctor Message',
-//     message:
-//       'Dr. Smith has sent you a message regarding your last consultation.',
-//     time: '2 days ago',
-//     read: true,
-//   },
-//   {
-//     id: '5',
-//     icon: '📋',
-//     title: 'Medical Record Updated',
-//     message:
-//       'Your medical history has been updated with the latest consultation notes.',
-//     time: '3 days ago',
-//     read: true,
-//   },
-//   {
-//     id: '6',
-//     icon: '⭐',
-//     title: 'Rate Your Experience',
-//     message:
-//       'How was your consultation with Dr. Nwosu? Please leave a review.',
-//     time: '4 days ago',
-//     read: true,
-//   },
-// ];
-
-// export default function NotificationsScreen() {
-//   const styles = useThemedStyles((theme) =>
-//     StyleSheet.create({
-//       container: { flex: 1, backgroundColor: theme.colors.background },
-//       scroll: {
-//         padding: theme.spacing.base,
-//         paddingBottom: 100,
-//         gap: theme.spacing.sm,
-//       },
-//       card: {
-//         flexDirection: 'row',
-//         gap: theme.spacing.md,
-//         backgroundColor: theme.colors.surfaceCard,
-//         borderRadius: theme.radius.lg,
-//         padding: theme.spacing.base,
-//       },
-//       cardUnread: {
-//         backgroundColor: theme.colors.primary.shallow,
-//         borderLeftWidth: 3,
-//         borderLeftColor: theme.colors.primary.mid,
-//       },
-//       iconBox: {
-//         width: 44,
-//         height: 44,
-//         borderRadius: 22,
-//         backgroundColor: theme.colors.primary.base,
-//         alignItems: 'center',
-//         justifyContent: 'center',
-//       },
-//       icon: { fontSize: 20 },
-//       content: { flex: 1 },
-//       topRow: {
-//         flexDirection: 'row',
-//         justifyContent: 'space-between',
-//         alignItems: 'center',
-//         marginBottom: 2,
-//       },
-//       title: {
-//         fontSize: theme.typography.sizes.md,
-//         fontWeight: '500',
-//         color: theme.colors.text,
-//         flex: 1,
-//       },
-//       unreadDot: {
-//         width: 8,
-//         height: 8,
-//         borderRadius: 4,
-//         backgroundColor: theme.colors.primary.mid,
-//         marginLeft: theme.spacing.sm,
-//       },
-//       message: {
-//         fontSize: theme.typography.sizes.sm,
-//         color: theme.colors.textSecondary,
-//         lineHeight: 20,
-//         marginBottom: theme.spacing.xs,
-//       },
-//       time: {
-//         fontSize: theme.typography.sizes.xs,
-//         color: theme.colors.textMuted,
-//       },
-//     })
-//   );
-
-//   return (
-//     <View style={styles.container}>
-//       <ScrollView
-//         contentContainerStyle={styles.scroll}
-//         showsVerticalScrollIndicator={false}
-//       >
-//         {notifications.map((notif) => (
-//           <TouchableOpacity
-//             key={notif.id}
-//             style={[styles.card, !notif.read && styles.cardUnread]}
-//             activeOpacity={0.85}
-//           >
-//             <View style={styles.iconBox}>
-//               <Text style={styles.icon}>{notif.icon}</Text>
-//             </View>
-//             <View style={styles.content}>
-//               <View style={styles.topRow}>
-//                 <Text style={styles.title}>{notif.title}</Text>
-//                 {!notif.read && <View style={styles.unreadDot} />}
-//               </View>
-//               <Text style={styles.message} numberOfLines={2}>
-//                 {notif.message}
-//               </Text>
-//               <Text style={styles.time}>{notif.time}</Text>
-//             </View>
-//           </TouchableOpacity>
-//         ))}
-//       </ScrollView>
-//     </View>
-//   );
-// }
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -180,7 +25,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { formatDate } from '@/utils/formatter';
 import { handleNotificationNavigation } from '@/utils/notificationNavigation';
 
-const PAGE_SIZE = 20;
+export const PAGE_SIZE = 20;
 
 const NOTIFICATION_ICONS: Record<NotificationType, IconSymbolName> = {
   [NotificationType.APPOINTMENT]: 'calendar.badge',
@@ -383,7 +228,8 @@ export default function NotificationsScreen() {
         flexDirection: 'row',
         gap: theme.spacing.md,
         backgroundColor: theme.colors.surfaceCard,
-        borderRadius: theme.radius.lg,
+        borderBottomRightRadius: theme.radius.lg,
+        borderTopRightRadius: theme.radius.lg,
         padding: theme.spacing.base,
       },
       cardUnread: {

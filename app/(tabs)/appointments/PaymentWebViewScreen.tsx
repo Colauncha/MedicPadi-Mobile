@@ -39,7 +39,7 @@ const PaymentWebViewScreen = () => {
         router.replace({
           pathname: '/appointments/[id]',
           params: { id: response.data.meta.source_id },
-        });
+        }, { withAnchor: true });
       } else {
         console.log('Transaction not successful:', response.data.status);
       }

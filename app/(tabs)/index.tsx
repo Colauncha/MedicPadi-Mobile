@@ -31,6 +31,8 @@ import {
 } from '@/services/api';
 import { useTheme } from '@/theme/ThemeProvider';
 import { Theme } from '@/theme/types';
+import MenuModal from '@/components/ui/menuModal';
+import Search from '@/components/search/search';
 
 const MedicpadiLogo = require('../../assets/images/medicpadi-logo.png');
 const QuickImage = require('../../assets/images/DashboardRectQuickActions.png');
@@ -84,6 +86,7 @@ const DashboardHeaderElement = ({
   loading,
   appTheme,
   unreadCount,
+  setShowSearch,
 }: {
   user: AuthUser | null;
   profile: ProfileData | null;
@@ -91,6 +94,7 @@ const DashboardHeaderElement = ({
   loading: boolean;
   appTheme: Theme;
   unreadCount: number;
+  setShowSearch: (show: boolean) => void;
 }) => {
   const styles = useThemedStyles((theme) =>
     StyleSheet.create({
@@ -167,13 +171,18 @@ const DashboardHeaderElement = ({
         top: -5,
         right: -5,
         backgroundColor: theme.colors.danger,
+        width: 20,
+        height: 20,
         borderRadius: theme.radius.full,
+        justifyContent: 'center',
+        alignItems: 'center',
       },
       unreadCountText: {
         color: theme.colors.mono.light,
-        fontSize: theme.typography.sizes.xs,
+        fontSize: theme.typography.sizes.sm,
         fontWeight: 'bold',
-        paddingHorizontal: 6,
+        textAlign: 'center',
+        // paddingHorizontal: 6,
       },
     })
   );
@@ -209,8 +218,16 @@ const DashboardHeaderElement = ({
           contentFit="contain"
         />
         <View style={styles.logoRowIcons}>
+          <Pressable onPress={() => setShowSearch(true)}>
+            <IconSymbol
+              name="magnifyingglass"
+              size={24}
+              style={styles.icons}
+              color={appTheme.colors.mono.darkGray}
+            />
+          </Pressable>
           <Pressable
-            onPress={() => router.push('/notifications')}
+            onPress={() => router.push('/notifications', { withAnchor: true })}
             style={{ position: 'relative' }}
           >
             <IconSymbol
@@ -227,7 +244,9 @@ const DashboardHeaderElement = ({
               </View>
             )}
           </Pressable>
-          <Pressable onPress={() => router.push('/profile')}>
+          <Pressable
+            onPress={() => router.push('/profile', { withAnchor: true })}
+          >
             {profile?.profile.profilePicture?.url ? (
               <Image
                 source={{ uri: profile.profile.profilePicture.url }}
@@ -256,7 +275,7 @@ const DashboardHeaderElement = ({
       <View style={styles.statsGrid}>
         {statCards.map((card) => (
           <TouchableOpacity
-            onPress={() => router.push(card.to)}
+            onPress={() => router.push(card.to, { withAnchor: true })}
             key={card.label}
             style={styles.statCard}
             activeOpacity={0.8}
@@ -391,6 +410,7 @@ export default function HomeScreen() {
     labs: 0,
     pastAppointments: 0,
   });
+  const [showSearch, setShowSearch] = useState(false);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -409,7 +429,7 @@ export default function HomeScreen() {
           { text: 'Later', style: 'cancel' },
           {
             text: 'Verify Now',
-            onPress: () => router.push('/verifyEmail'),
+            onPress: () => router.push('/verifyEmail', { withAnchor: true }),
           },
         ]
       );
@@ -422,7 +442,7 @@ export default function HomeScreen() {
           { text: 'Later', style: 'cancel' },
           {
             text: 'Complete Now',
-            onPress: () => router.push('/editProfile'),
+            onPress: () => router.push('/editProfile', { withAnchor: true }),
           },
         ]
       );
@@ -755,10 +775,13 @@ export default function HomeScreen() {
         pictureUrl: doc.profilePicture?.url,
         onPress: () =>
           doc.user_id &&
-          router.push({
-            pathname: '/appointments/doctor/[id]',
-            params: { id: doc.user_id },
-          }),
+          router.push(
+            {
+              pathname: '/appointments/doctor/[id]',
+              params: { id: doc.user_id },
+            },
+            { withAnchor: true }
+          ),
       })),
     },
     {
@@ -770,7 +793,7 @@ export default function HomeScreen() {
         subtitle: shortBio(pharm.bio, 'Drug Store'),
         rating: pharm.rating,
         pictureUrl: pharm.profilePicture?.url,
-        onPress: () => router.push('/pharmacy'),
+        onPress: () => router.push('/pharmacy', { withAnchor: true }),
       })),
     },
     {
@@ -782,7 +805,7 @@ export default function HomeScreen() {
         subtitle: shortBio(lab.bio, 'Laboratory'),
         rating: lab.rating,
         pictureUrl: lab.profilePicture?.url,
-        onPress: () => router.push('/lab'),
+        onPress: () => router.push('/lab', { withAnchor: true }),
       })),
     },
   ];
@@ -801,6 +824,7 @@ export default function HomeScreen() {
           loading={loading}
           appTheme={appTheme}
           unreadCount={unreadCount}
+          setShowSearch={setShowSearch}
         />
       }
     >
@@ -817,7 +841,7 @@ export default function HomeScreen() {
             <TouchableOpacity
               key={action.label}
               style={styles.quickCard}
-              onPress={() => router.push(action.to)}
+              onPress={() => router.push(action.to, { withAnchor: true })}
             >
               <View style={styles.quickTop}>
                 <View style={styles.quickLabelRow}>
@@ -846,7 +870,9 @@ export default function HomeScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Upcoming/Recent Appointment</Text>
-            <TouchableOpacity onPress={() => router.push('/appointments')}>
+            <TouchableOpacity
+              onPress={() => router.push('/appointments', { withAnchor: true })}
+            >
               <Text style={styles.viewAll}>View All</Text>
             </TouchableOpacity>
           </View>
@@ -907,13 +933,16 @@ export default function HomeScreen() {
                 <TouchableOpacity
                   style={styles.apptBtnPrimary}
                   onPress={() =>
-                    router.push({
-                      pathname: '/appointments/book',
-                      params: {
-                        providerId: upcomingAppt.provider_id,
-                        doctorName: providerName(upcomingDoc),
+                    router.push(
+                      {
+                        pathname: '/appointments/book',
+                        params: {
+                          providerId: upcomingAppt.provider_id,
+                          doctorName: providerName(upcomingDoc),
+                        },
                       },
-                    })
+                      { withAnchor: true }
+                    )
                   }
                 >
                   <Text style={styles.apptBtnPrimaryText}>Re-schedule</Text>
@@ -921,10 +950,13 @@ export default function HomeScreen() {
                 <TouchableOpacity
                   style={styles.apptBtnOutline}
                   onPress={() =>
-                    router.push({
-                      pathname: '/appointments/[id]',
-                      params: { id: upcomingAppt.id },
-                    })
+                    router.push(
+                      {
+                        pathname: '/appointments/[id]',
+                        params: { id: upcomingAppt.id },
+                      },
+                      { withAnchor: true }
+                    )
                   }
                 >
                   <Text style={styles.apptBtnOutlineText}>View Details</Text>
@@ -935,7 +967,9 @@ export default function HomeScreen() {
             <View style={styles.emptyCard}>
               <Text style={styles.emptyText}>No upcoming appointments</Text>
               <TouchableOpacity
-                onPress={() => router.push('/appointments/book')}
+                onPress={() =>
+                  router.push('/appointments/book', { withAnchor: true })
+                }
               >
                 <Text style={styles.emptyLink}>Book one now →</Text>
               </TouchableOpacity>
@@ -998,6 +1032,12 @@ export default function HomeScreen() {
           )}
         </View>
       </ScrollView>
+      <MenuModal
+        visible={showSearch}
+        onClose={() => setShowSearch(false)}
+        title="Search"
+        renderView={() => <Search onSelect={() => setShowSearch(false)} />}
+      />
     </ParallaxScrollView>
   );
 }

@@ -3,6 +3,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -244,6 +245,16 @@ export default function ProviderProfile({
         color: theme.colors.text,
         marginBottom: theme.spacing.sm,
       },
+      sectionSubTitle: {
+        fontSize: theme.typography.sizes.xs,
+        fontWeight: '500',
+        color: theme.colors.primary.deep,
+        marginBottom: theme.spacing.sm,
+      },
+      sectionRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+      },
       aboutText: {
         fontSize: theme.typography.sizes.sm,
         color: theme.colors.textSecondary,
@@ -338,6 +349,34 @@ export default function ProviderProfile({
     </TouchableOpacity>
   );
 
+  const handleViewMore = () => {
+    if (role === 'lab') {
+      router.push(
+        {
+          pathname: '/(tabs)/lab/appointment/viewAll',
+          params: {
+            id: providerId,
+            name: name,
+          },
+        },
+        { withAnchor: true }
+      );
+      return;
+    } else {
+      router.push(
+        {
+          pathname: '/(tabs)/pharmacy/drug/viewAll',
+          params: {
+            id: providerId,
+            name: name,
+          },
+        },
+        { withAnchor: true }
+      );
+      return;
+    }
+  };
+
   if (loading || error) {
     return (
       <SafeAreaView style={styles.safe} edges={[]}>
@@ -359,10 +398,13 @@ export default function ProviderProfile({
 
   const onCtaPress = () => {
     if (role === 'lab') {
-      router.push({
-        pathname: '/appointments/book',
-        params: { providerId },
-      });
+      router.push(
+        {
+          pathname: '/appointments/book',
+          params: { providerId },
+        },
+        { withAnchor: true }
+      );
     }
     // TODO: pharmacy ordering flow (no screen exists yet).
   };
@@ -415,18 +457,18 @@ export default function ProviderProfile({
                 </Text>
               </View>
             ) : null}
-            {typeof provider?.rating === 'number' && (
-              <View style={styles.metaRow}>
-                <StarRating
-                  rating={provider.rating}
-                  size={13}
-                  color={appTheme.colors.warning}
-                />
-                <Text style={styles.reviewCount}>
-                  ({provider.totalReviews ?? 0} reviews)
-                </Text>
-              </View>
-            )}
+            {/* {typeof provider?.rating === 'number' && ( */}
+            <View style={styles.metaRow}>
+              <StarRating
+                rating={provider?.rating || 0}
+                size={13}
+                color={appTheme.colors.warning}
+              />
+              <Text style={styles.reviewCount}>
+                ({provider?.totalReviews ?? 0} reviews)
+              </Text>
+            </View>
+            {/* )} */}
           </View>
 
           {/* About */}
@@ -454,18 +496,29 @@ export default function ProviderProfile({
           {/* Tests / Drugs */}
           {services.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>{config.servicesTitle}</Text>
+              <View style={styles.sectionRow}>
+                <Text style={styles.sectionTitle}>{config.servicesTitle}</Text>
+                <Pressable onPress={handleViewMore}>
+                  <Text style={styles.sectionSubTitle}>View All</Text>
+                </Pressable>
+              </View>
               {services.map((item) => (
                 <TouchableOpacity
                   key={item.id}
                   style={styles.serviceRow}
                   activeOpacity={0.8}
-                  disabled={role !== 'pharmacy'}
+                  // disabled={role !== 'pharmacy'}
                   onPress={() =>
-                    router.push({
-                      pathname: '/pharmacy/drug/[id]',
-                      params: { id: item.id, name: item.name },
-                    })
+                    router.push(
+                      {
+                        pathname:
+                          role === 'lab'
+                            ? '/(tabs)/lab/appointment/[id]'
+                            : '/pharmacy/drug/[id]',
+                        params: { id: item.id, name: item.name },
+                      },
+                      { withAnchor: true }
+                    )
                   }
                 >
                   <View style={styles.serviceInfo}>

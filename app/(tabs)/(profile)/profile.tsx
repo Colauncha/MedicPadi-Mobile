@@ -78,7 +78,7 @@ const ProfilePage = () => {
         bottom: -50,
         right: 0,
         flexDirection: 'row',
-        gap: theme.spacing.base,
+        gap: theme.spacing.sm,
       },
 
       headerIcons: {
@@ -297,7 +297,10 @@ const ProfilePage = () => {
     setSendingVerification(true);
     try {
       await apiSendVerificationEmail(token);
-      router.push({ pathname: '/verifyEmail', params: { sent: '1' } });
+      router.push(
+        { pathname: '/verifyEmail', params: { sent: '1' } },
+        { withAnchor: true }
+      );
     } catch (e: any) {
       AppAlert.alert(
         'Failed',
@@ -377,7 +380,7 @@ const ProfilePage = () => {
 
   const editButton = (label: string) => (
     <TouchableOpacity
-      onPress={() => router.push('/editProfile')}
+      onPress={() => router.push('/editProfile', { withAnchor: true })}
       accessibilityRole="button"
       accessibilityLabel={`Edit ${label}`}
       style={styles.editButton}
@@ -444,7 +447,19 @@ const ProfilePage = () => {
 
           <View style={styles.headerIconsView}>
             <TouchableOpacity
-              onPress={() => router.push('/settings')}
+              onPress={() => router.push('/notifications')}
+              accessibilityRole="button"
+              accessibilityLabel="Open Notifications"
+            >
+              <IconSymbol
+                name="bell.fill"
+                color={appTheme.colors.textSecondary}
+                style={styles.headerIcons}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => router.push('/settings', { withAnchor: true })}
               accessibilityRole="button"
               accessibilityLabel="Open settings"
             >
@@ -456,7 +471,7 @@ const ProfilePage = () => {
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={() => router.push('/editProfile')}
+              onPress={() => router.push('/editProfile', { withAnchor: true })}
               accessibilityRole="button"
               accessibilityLabel="Edit profile"
             >
@@ -588,7 +603,7 @@ const ProfilePage = () => {
               <TouchableOpacity
                 key={link.label}
                 style={styles.listRow}
-                onPress={() => router.push(link.to)}
+                onPress={() => router.push(link.to, { withAnchor: true })}
               >
                 <View style={styles.linkLeft}>
                   <IconSymbol

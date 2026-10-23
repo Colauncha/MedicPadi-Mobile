@@ -33,6 +33,8 @@ export default function TabLayout() {
         },
         headerShown: false,
         tabBarButton: HapticTab,
+        // Reset each tab's nested stack when leaving it, so pressing a tab always lands on its root screen
+        popToTopOnBlur: true,
       }}
     >
       <Tabs.Screen

@@ -1,6 +1,8 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  KeyboardAvoidingView,
+  Keyboard,
+  KeyboardEvent,
+  LayoutAnimation,
   Modal,
   Platform,
   Pressable,
@@ -22,7 +24,47 @@ interface MenuSheetProps {
   blurTarget?: React.RefObject<View | null>;
 }
 
-export const MenuModal = ({
+// Modal renders outside the screen tree, and with edge-to-edge Android no
+// longer resizes the window for the keyboard, so track its height ourselves.
+const useKeyboardHeight = () => {
+  const [height, setHeight] = useState(0);
+
+  useEffect(() => {
+    const isIOS = Platform.OS === 'ios';
+    // Animate alongside the iOS keyboard so the sheet doesn't jump.
+    const animate = (e: KeyboardEvent) => {
+      if (isIOS && e.duration) {
+        LayoutAnimation.configureNext(
+          LayoutAnimation.create(e.duration, LayoutAnimation.Types.keyboard)
+        );
+      }
+    };
+
+    const show = Keyboard.addListener(
+      isIOS ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        animate(e);
+        setHeight(e.endCoordinates.height);
+      }
+    );
+    const hide = Keyboard.addListener(
+      isIOS ? 'keyboardWillHide' : 'keyboardDidHide',
+      (e) => {
+        animate(e);
+        setHeight(0);
+      }
+    );
+
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+
+  return height;
+};
+
+const MenuModal = ({
   visible,
   title,
   renderView,
@@ -34,6 +76,7 @@ export const MenuModal = ({
   // Action to run once the sheet has fully closed. iOS can't present an Alert
   // while a Modal is still dismissing, so we wait for onDismiss there.
   const pendingAction = useRef<(() => void) | null>(null);
+  const keyboardHeight = useKeyboardHeight();
 
   const styles = useThemedStyles((t) =>
     StyleSheet.create({
@@ -88,30 +131,29 @@ export const MenuModal = ({
     >
       <Pressable style={styles.backdrop} onPress={onClose}>
         <BlurBackground target={blurTarget} />
-        {/* Modal renders outside the screen tree, so it needs its own keyboard handling */}
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        {/* Swallow presses on the sheet itself so they don't close it */}
+        <Pressable
+          style={[
+            styles.sheet,
+            {
+              // The keyboard already covers the bottom inset when it's open.
+              paddingBottom:
+                (keyboardHeight || insets.bottom) + theme.spacing.base,
+            },
+          ]}
+          onPress={() => {}}
         >
-          {/* Swallow presses on the sheet itself so they don't close it */}
-          <Pressable
-            style={[
-              styles.sheet,
-              { paddingBottom: insets.bottom + theme.spacing.base },
-            ]}
-            onPress={() => {}}
-          >
-            <View style={styles.handle} />
-            {title ? (
-              <Text style={styles.title} numberOfLines={1}>
-                {title}
-              </Text>
-            ) : null}
-            {renderView()}
-            <Pressable style={styles.cancel} onPress={onClose}>
-              <Text style={styles.cancelText}>Cancel</Text>
-            </Pressable>
+          <View style={styles.handle} />
+          {title ? (
+            <Text style={styles.title} numberOfLines={1}>
+              {title}
+            </Text>
+          ) : null}
+          {renderView()}
+          <Pressable style={styles.cancel} onPress={onClose}>
+            <Text style={styles.cancelText}>Cancel</Text>
           </Pressable>
-        </KeyboardAvoidingView>
+        </Pressable>
       </Pressable>
     </Modal>
   );

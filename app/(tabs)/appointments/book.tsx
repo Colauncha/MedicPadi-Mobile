@@ -503,7 +503,7 @@ export default function BookAppointmentScreen() {
               No doctor selected. Pick a doctor to see their availability.
             </Text>
             <TouchableOpacity
-              onPress={() => router.replace('/appointments/speciality')}
+              onPress={() => router.replace('/appointments/speciality', { withAnchor: true })}
             >
               <Text style={styles.noDoctorLink}>Find a doctor →</Text>
             </TouchableOpacity>
