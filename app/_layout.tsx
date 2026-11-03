@@ -126,6 +126,20 @@ function RootLayoutNav() {
         />
       </Stack.Protected>
 
+      <Stack.Protected
+        guard={
+          isAuthenticated && !!user && !isNewReg && user.role !== 'patient'
+        }
+      >
+        <Stack.Screen
+          name="getProviderApp"
+          options={{
+            contentStyle: { backgroundColor: theme.colors.background },
+            headerShown: false,
+          }}
+        />
+      </Stack.Protected>
+
       {/* Modal route */}
       {/* <Stack.Screen
         name="modal"

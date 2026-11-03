@@ -36,6 +36,9 @@ export const PharmacyPage = () => {
       />
       <Stack.Screen name="drug/viewAll" />
       <Stack.Screen name="checkout" />
+      <Stack.Screen name="payment" />
+      <Stack.Screen name="orders" />
+      <Stack.Screen name="trackOrder" />
     </Stack>
   );
 };

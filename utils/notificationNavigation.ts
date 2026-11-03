@@ -37,6 +37,28 @@ export function handleNotificationNavigation(data: Record<string, unknown>) {
       }
       break;
 
+    case NotificationType.DRUG_REQUISITION:
+      if (typeof data.source_id === 'string') {
+        router.push({
+          pathname: '/(tabs)/pharmacy/trackOrder',
+          params: {
+            id: data.source_id,
+          },
+        });
+      }
+      break;
+
+    case NotificationType.TEST_REQUISITION:
+      if (typeof data.source_id === 'string') {
+        router.push({
+          pathname: '/(tabs)/lab/appointment/[id]',
+          params: {
+            id: data.source_id,
+          },
+        });
+      }
+      break;
+
     // case NotificationType.PAYMENT:
     //   if (typeof data.source_id === 'string') {
     //     router.push({

@@ -19,51 +19,78 @@ export default function PharmacyScreen() {
       fallbackSubtitle="Pharmacy"
       emptyLabel="pharmacies"
       headerRight={
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() =>
-            router.push(
-              {
-                pathname: '/pharmacy/checkout',
-              },
-              { withAnchor: true }
-            )
-          }
+        <View
           style={{
-            position: 'relative',
+            flexDirection: 'row',
+            gap: appTheme.spacing.base,
           }}
         >
-          <IconSymbol
-            name="cart"
-            size={24}
-            color={appTheme.colors.textSecondary}
-          />
-          {itemCount > 0 && (
-            <View
-              style={{
-                position: 'absolute',
-                top: -2,
-                right: -2,
-                width: appTheme.spacing.base,
-                height: appTheme.spacing.base,
-                borderRadius: appTheme.radius.full,
-                backgroundColor: appTheme.colors.danger,
-                justifyContent: 'center',
-                alignItems: 'center',
-                flexDirection: 'row',
-              }}
-            >
-              <Text
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() =>
+              router.push(
+                {
+                  pathname: '/pharmacy/checkout',
+                },
+                { withAnchor: true }
+              )
+            }
+            style={{
+              position: 'relative',
+            }}
+          >
+            <IconSymbol
+              name="cart"
+              size={24}
+              color={appTheme.colors.textSecondary}
+            />
+            {itemCount > 0 && (
+              <View
                 style={{
-                  color: appTheme.colors.mono.light,
-                  fontSize: appTheme.typography.sizes.sm,
+                  position: 'absolute',
+                  top: -2,
+                  right: -2,
+                  width: appTheme.spacing.base,
+                  height: appTheme.spacing.base,
+                  borderRadius: appTheme.radius.full,
+                  backgroundColor: appTheme.colors.danger,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  flexDirection: 'row',
                 }}
               >
-                {itemCount}
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
+                <Text
+                  style={{
+                    color: appTheme.colors.mono.light,
+                    fontSize: appTheme.typography.sizes.sm,
+                  }}
+                >
+                  {itemCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() =>
+              router.push(
+                {
+                  pathname: '/pharmacy/orders',
+                },
+                { withAnchor: true }
+              )
+            }
+            style={{
+              position: 'relative',
+            }}
+          >
+            <IconSymbol
+              name="shippingbox"
+              size={24}
+              color={appTheme.colors.textSecondary}
+            />
+          </TouchableOpacity>
+        </View>
       }
     />
   );

@@ -1,3 +1,4 @@
+import { DrugReqData } from '@/context/CartContext';
 import { storage } from '@/utils/storage';
 import { File } from 'expo-file-system';
 // import { truncate } from '@/utils';
@@ -178,6 +179,7 @@ export interface ProfileFields {
   registrationNumber?: string;
   address?: string;
   isProfileComplete?: boolean;
+  deliveryCost?: string;
 
   // rating
   rating?: number;
@@ -274,6 +276,33 @@ export interface DrugData {
   sideEffect: string;
   linkToMedWebsite: string;
   user_id?: string | null;
+}
+
+export interface DrugReqList {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  patient_id: string;
+  pharmacy_id: string;
+  prescription_id: string;
+  status: string;
+  delivery_address: string;
+  total_amount: string;
+  delivery_cost: string;
+  payment_status: string;
+  notes: string;
+}
+
+export interface DrugReqDetail extends DrugReqList {
+  items: {
+    id: string;
+    requisition_id: string;
+    pharmacy_drug_id: string;
+    medication_name: string;
+    quantity: number;
+    unit_price: string;
+    requiresPrescription: boolean;
+  }[];
 }
 
 export interface LabTestData {
@@ -416,7 +445,8 @@ export interface DoctorStatsResponse {
 
 export enum NotificationType {
   APPOINTMENT = 'appointment',
-  REQUISITION = 'requisition',
+  DRUG_REQUISITION = 'drug_requisition',
+  TEST_REQUISITION = 'drug_requisition',
   PRESCRIPTION = 'prescription',
   PAYMENT = 'payment',
   SYSTEM = 'system',
@@ -765,8 +795,6 @@ export const apiUpdateConsent = (
   token: string
 ) => request<EHRConsent>('PATCH', `/ehr/consents/${id}`, data, token);
 
-
-
 // ── Test Requisitions ─────────────────────────────────────────────────────────
 
 export const apiGetTestRequisitions = (
@@ -783,14 +811,55 @@ export const apiGetTestRequisitions = (
 // ── Drug Requisitions ─────────────────────────────────────────────────────────
 
 export const apiCreateDrugRequisition = (
-  data: {
-    pharmacy_id: string;
-    items: { drug_id: string; quantity: number }[];
-    delivery_address?: string;
-    notes?: string;
-  },
+  data: DrugReqData & { patient_id: string },
   token: string
-) => request<unknown>('POST', '/orders/drug-requisitions', data, token);
+) =>
+  request<
+    Partial<
+      DrugReqData & {
+        total_amount: number;
+        tranx: {
+          reference: string;
+          authorization_url: string;
+        };
+      }
+    >
+  >('POST', '/orders/drug-requisitions', data, token);
+
+export const apiListDrugRequisition = (
+  params: Record<string, string | number | undefined> = {},
+  token: string
+) =>
+  request<Paginated<DrugReqList>>(
+    'GET',
+    `/orders/drug-requisitions${toQS(params)}`,
+    undefined,
+    token
+  );
+
+export const apiGetDrugRequisition = (id: string, token: string) =>
+  request<DrugReqDetail>(
+    'GET',
+    `/orders/drug-requisitions/${id}`,
+    undefined,
+    token
+  );
+
+export const apiReceiveDrugRequisition = (id: string, token: string) =>
+  request<unknown>(
+    'GET',
+    `/orders/drug-requisitions/${id}/receive`,
+    undefined,
+    token
+  );
+
+export const apiCancelDrugRequisition = (id: string, token: string) =>
+  request<{ message: string }>(
+    'DELETE',
+    `/orders/drug-requisitions/${id}`,
+    undefined,
+    token
+  );
 
 // ── Transactions and Wallet ─────────────────────────────────────────────────────────
 
@@ -820,7 +889,6 @@ export const apiSearch = (
   },
   token: string
 ) => request<SearchResults>('GET', `/search${toQS(params)}`, undefined, token);
-
 
 // ── Notification ─────────────────────────────────────────────────────────
 

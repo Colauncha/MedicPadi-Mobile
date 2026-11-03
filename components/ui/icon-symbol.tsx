@@ -67,6 +67,8 @@ const MAPPING = {
   'cross.case.fill': 'local-hospital',
   clock: 'schedule',
   cart: 'shopping-cart',
+  receipt: 'receipt-long',
+  shippingbox: 'local-mall',
 
   // Medical related
   stethoscope: 'medical-services', // Doctor (Stethoscope on iOS -> Medical Briefcase on Android)

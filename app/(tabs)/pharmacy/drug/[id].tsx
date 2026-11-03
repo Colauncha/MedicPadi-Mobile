@@ -322,12 +322,16 @@ export default function DrugDetailsScreen() {
       });
       AppAlert.alert(
         'Add to cart',
-        `${quantity} units of ${drug.name} as been added to your cart`
+        `${quantity} units of ${drug.name} as been added to your cart`,
+        [],
+        { variant: 'success' }
       );
     } catch (error) {
       AppAlert.alert(
         'Error adding to cart',
-        `The following error occured while adding to cart: ${error}`
+        `The following error occured while adding to cart: ${error}`,
+        [],
+        { variant: 'error' }
       );
     }
   };

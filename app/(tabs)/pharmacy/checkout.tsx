@@ -1,8 +1,8 @@
+import { Image } from 'expo-image';
 import { router, Stack } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -20,18 +20,34 @@ import {
 import { Button } from '@/components/ui/Button';
 import { useCart, DrugReqData, DrugReqItem } from '@/context/CartContext';
 import { useThemedStyles } from '@/hooks/useThemedStyle';
-import { DrugData } from '@/services/api';
+import {
+  apiCreateDrugRequisition,
+  apiListProfiles,
+  DrugData,
+  ProfileFields,
+} from '@/services/api';
 import { useTheme } from '@/theme/ThemeProvider';
 import { AppHeader } from '@/components/ui/AppHeader';
+import { useAuth } from '@/context/AuthContext';
+import { AppAlert } from '@/components/ui/alert';
 
 const formatPrice = (price: number): string =>
   `₦${price.toLocaleString('en-NG')}`;
 
-const subtotalOf = (req: DrugReqData): number =>
+const itemsTotalOf = (req: DrugReqData): number =>
   req.items.reduce((sum, i) => sum + i.unit_price * i.quantity, 0);
 
 const needsPrescription = (req: DrugReqData): boolean =>
   req.items.some((i) => i.requiresPrescription);
+
+// `delivery_cost` is typed as `boolean` in ProfileFields, which is almost
+// certainly a typo for `number`. Read it defensively so it works either way:
+// numbers (or numeric strings) count, anything else is treated as free.
+const deliveryCostOf = (profile?: ProfileFields): number => {
+  const raw: string | undefined = profile?.deliveryCost;
+  const n = typeof raw === 'string' ? parseFloat(raw) : 0;
+  return Number.isFinite(n) && n > 0 ? n : 0;
+};
 
 // The cart stores line items, but its actions take a DrugData. Rebuild the
 // minimum needed. `stock: null` means no client-side cap at checkout; the
@@ -50,8 +66,40 @@ const toDrug = (item: DrugReqItem): DrugData => ({
 //   await apiCreateDrugRequisition(req, token);
 // It throws for now so an order is never cleared from the cart without
 // actually being sent.
-const submitRequisition = async (_req: DrugReqData): Promise<void> => {
-  throw new Error('Order API is not connected yet.');
+const submitRequisition = async (
+  _req: DrugReqData & { patient_id: string },
+  token: string
+): Promise<void> => {
+  try {
+    // console.log('Sending request...');
+    const res = await apiCreateDrugRequisition(_req, token);
+    if (res) {
+      AppAlert.alert(
+        'Order Placed successfully',
+        'Your order has been placed successfully, please proceed to make payment to confirm your order',
+        [
+          {
+            text: 'Ok',
+            onPress: () => {
+              router.push(
+                {
+                  pathname: '/pharmacy/payment',
+                  params: {
+                    reference: res.tranx?.reference,
+                    url: res.tranx?.authorization_url,
+                  },
+                },
+                { withAnchor: true }
+              );
+            },
+          },
+        ],
+        { variant: 'success' }
+      );
+    }
+  } catch (error) {
+    throw new Error('Could not create requisition: ', error || '');
+  }
 };
 
 const Checkout = () => {
@@ -64,9 +112,13 @@ const Checkout = () => {
     clearCart,
   } = useCart();
   const { theme: appTheme } = useTheme();
+  const { token, user } = useAuth();
   const insets = useSafeAreaInsets();
   const [submitting, setSubmitting] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
+  const [pharms, setPharms] = useState<ProfileFields[]>([]);
+  const [loadingPharms, setLoadingPharms] = useState(true);
+  const [retryKey, setRetryKey] = useState(0);
 
   const styles = useThemedStyles((theme) =>
     StyleSheet.create({
@@ -100,11 +152,49 @@ const Checkout = () => {
         borderColor: theme.colors.border,
         padding: theme.spacing.base,
       },
-      cardTitle: {
+      orderCaption: {
+        fontSize: theme.typography.sizes.sm,
+        color: theme.colors.textMuted,
+        marginBottom: theme.spacing.xs,
+      },
+
+      // Pharmacy header
+      pharmRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.spacing.md,
+        paddingBottom: theme.spacing.base,
+        marginBottom: theme.spacing.base,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: theme.colors.border,
+      },
+      pharmAvatar: {
+        width: 48,
+        height: 48,
+        borderRadius: theme.radius.lg,
+        backgroundColor: theme.colors.primary.shallow,
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+      },
+      pharmAvatarImage: { width: '100%', height: '100%' },
+      pharmEmoji: { fontSize: 24 },
+      pharmInfo: { flex: 1 },
+      pharmName: {
         fontSize: theme.typography.sizes.base,
         fontWeight: '600',
         color: theme.colors.text,
-        marginBottom: theme.spacing.sm,
+      },
+      pharmMeta: {
+        marginTop: 2,
+        fontSize: theme.typography.sizes.sm,
+        color: theme.colors.textMuted,
+      },
+      pharmRetry: {
+        fontSize: theme.typography.sizes.sm,
+        fontWeight: '500',
+        color: theme.colors.primary.deep,
+        textDecorationLine: 'underline',
       },
 
       // Line items
@@ -183,6 +273,38 @@ const Checkout = () => {
         color: theme.colors.text,
       },
 
+      // Order summary
+      summary: {
+        marginTop: theme.spacing.base,
+        paddingTop: theme.spacing.md,
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: theme.colors.border,
+        gap: theme.spacing.xs,
+      },
+      summaryRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+      },
+      summaryLabel: {
+        fontSize: theme.typography.sizes.sm,
+        color: theme.colors.textMuted,
+      },
+      summaryValue: {
+        fontSize: theme.typography.sizes.sm,
+        color: theme.colors.textSecondary,
+      },
+      subtotalLabel: {
+        fontSize: theme.typography.sizes.base,
+        fontWeight: '600',
+        color: theme.colors.text,
+      },
+      subtotalValue: {
+        fontSize: theme.typography.sizes.base,
+        fontWeight: '600',
+        color: theme.colors.text,
+      },
+
       // Form
       formBlock: {
         marginTop: theme.spacing.base,
@@ -223,20 +345,6 @@ const Checkout = () => {
         fontSize: theme.typography.sizes.sm,
         color: theme.colors.warning,
       },
-      subtotalRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginTop: theme.spacing.base,
-      },
-      subtotalLabel: {
-        fontSize: theme.typography.sizes.sm,
-        color: theme.colors.textMuted,
-      },
-      subtotalValue: {
-        fontSize: theme.typography.sizes.base,
-        fontWeight: '600',
-        color: theme.colors.text,
-      },
 
       // Sticky footer
       footer: {
@@ -267,7 +375,64 @@ const Checkout = () => {
     })
   );
 
-  const grandTotal = drugRequisition.reduce((s, r) => s + subtotalOf(r), 0);
+  // Fetch pharmacy profiles. Keyed on the *set* of pharmacy ids rather than the
+  // whole cart, so changing a quantity doesn't trigger a refetch.
+  const pharmKey = useMemo(
+    () =>
+      drugRequisition
+        .map((r) => r.pharmacy_id)
+        .sort()
+        .join(','),
+    [drugRequisition]
+  );
+
+  useEffect(() => {
+    if (!token || !hydrated || !pharmKey) return;
+
+    let cancelled = false;
+    // let pharmKeys = pharmKey.split(',')
+    const timeout = setTimeout(async () => {
+      try {
+        // if (Array.isArray(pharmKeys) && pharmKeys.length > 1)
+        const res = await apiListProfiles(
+          pharmKey.split(',').length > 1
+            ? { ids: [...pharmKey.split(','), ''], role: 'pharmacy' }
+            : { id: pharmKey, role: 'pharmacy' },
+          token
+        );
+        console.log(res);
+        if (!cancelled) setPharms(Array.isArray(res?.data) ? res.data : []);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        if (!cancelled) setLoadingPharms(false);
+      }
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
+  }, [hydrated, token, pharmKey, retryKey]);
+
+  const retryPharms = () => {
+    setLoadingPharms(true);
+    setRetryKey((k) => k + 1);
+  };
+
+  // `pharmacy_id` may match either the profile id or its user id.
+  const findPharm = (pharmacyId: string): ProfileFields | undefined =>
+    pharms.find((p) => p.id === pharmacyId || p.user_id === pharmacyId);
+
+  // Order total for one pharmacy = items + that pharmacy's delivery cost.
+  const orderTotalOf = (req: DrugReqData): number =>
+    itemsTotalOf(req) + deliveryCostOf(findPharm(req.pharmacy_id));
+
+  const grandTotal = drugRequisition.reduce((s, r) => s + orderTotalOf(r), 0);
+
+  // Without a profile we can't know the delivery cost, so the total would be
+  // wrong. Hold the order button until every pharmacy has loaded.
+  const pharmsReady = drugRequisition.every((r) => !!findPharm(r.pharmacy_id));
 
   const errorsFor = (req: DrugReqData) => ({
     address: !req.delivery_address?.trim(),
@@ -281,20 +446,23 @@ const Checkout = () => {
 
   const handlePlaceOrder = async () => {
     setShowErrors(true);
-    if (hasErrors) return;
+    if (hasErrors || !pharmsReady || !token || !user?.id) return;
 
     setSubmitting(true);
     const failed: string[] = [];
 
     for (const req of drugRequisition) {
       try {
-        await submitRequisition({
-          ...req,
-          // Send clean values, not empty strings.
-          delivery_address: req.delivery_address?.trim() || null,
-          notes: req.notes?.trim() || null,
-          prescription_id: req.prescription_id?.trim() || null,
-        });
+        await submitRequisition(
+          {
+            ...req,
+            delivery_address: req.delivery_address?.trim() || null,
+            notes: req.notes?.trim() || null,
+            prescription_id: req.prescription_id?.trim() || null,
+            patient_id: user?.id,
+          },
+          token
+        );
         await clearCart(req.pharmacy_id); // only clear what actually went through
       } catch (error) {
         failed.push(error instanceof Error ? error.message : 'Unknown error');
@@ -303,14 +471,12 @@ const Checkout = () => {
 
     setSubmitting(false);
 
-    if (failed.length === 0) {
-      Alert.alert('Order placed', 'Your order has been sent to the pharmacy.', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
-    } else {
-      Alert.alert(
+    if (failed.length > 0) {
+      AppAlert.alert(
         "Some orders didn't go through",
-        `${failed[0]}\n\nThe affected items are still in your cart.`
+        `${failed[0]}\n\nThe affected items are still in your cart.`,
+        [],
+        { variant: 'error' }
       );
     }
   };
@@ -348,7 +514,6 @@ const Checkout = () => {
   // ---- Main ---------------------------------------------------------------
 
   return (
-    // <View style={styles.container}>
     <SafeAreaView style={styles.container} edges={['top']}>
       <Stack.Screen options={{ title: 'Checkout' }} />
       <KeyboardAvoidingView
@@ -364,14 +529,77 @@ const Checkout = () => {
           {drugRequisition.map((req, index) => {
             const errors = errorsFor(req);
             const requiresRx = needsPrescription(req);
+            const pharmacy = findPharm(req.pharmacy_id);
+            const itemsTotal = itemsTotalOf(req);
+            const delivery = deliveryCostOf(pharmacy);
+
+            const deliveryLabel = pharmacy
+              ? delivery > 0
+                ? formatPrice(delivery)
+                : 'Free'
+              : loadingPharms
+                ? 'Calculating…'
+                : '—';
 
             return (
               <View key={req.pharmacy_id} style={styles.card}>
-                <Text style={styles.cardTitle}>
-                  {drugRequisition.length > 1
-                    ? `Order ${index + 1} of ${drugRequisition.length}`
-                    : 'Your order'}
-                </Text>
+                {drugRequisition.length > 1 && (
+                  <Text style={styles.orderCaption}>
+                    Order {index + 1} of {drugRequisition.length}
+                  </Text>
+                )}
+
+                {/* Pharmacy profile */}
+                {pharmacy ? (
+                  <View style={styles.pharmRow}>
+                    <View style={styles.pharmAvatar}>
+                      {pharmacy.profilePicture?.url ? (
+                        <Image
+                          source={{ uri: pharmacy.profilePicture.url }}
+                          style={styles.pharmAvatarImage}
+                          contentFit="cover"
+                        />
+                      ) : (
+                        <Text style={styles.pharmEmoji}>🏥</Text>
+                      )}
+                    </View>
+                    <View style={styles.pharmInfo}>
+                      <Text style={styles.pharmName} numberOfLines={1}>
+                        {pharmacy.name ?? 'Pharmacy'}
+                      </Text>
+                      {pharmacy.address ? (
+                        <Text style={styles.pharmMeta} numberOfLines={2}>
+                          {pharmacy.address}
+                        </Text>
+                      ) : null}
+                      {typeof pharmacy.rating === 'number' &&
+                      pharmacy.rating > 0 ? (
+                        <Text style={styles.pharmMeta}>
+                          ★ {pharmacy.rating.toFixed(1)}
+                          {pharmacy.totalReviews
+                            ? ` (${pharmacy.totalReviews})`
+                            : ''}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
+                ) : loadingPharms ? (
+                  <View style={styles.pharmRow}>
+                    <ActivityIndicator color={appTheme.colors.primary.deep} />
+                    <Text style={styles.pharmMeta}>Loading pharmacy…</Text>
+                  </View>
+                ) : (
+                  <View style={styles.pharmRow}>
+                    <View style={styles.pharmInfo}>
+                      <Text style={styles.pharmMeta}>
+                        Couldnt load pharmacy details.
+                      </Text>
+                    </View>
+                    <TouchableOpacity onPress={retryPharms}>
+                      <Text style={styles.pharmRetry}>Retry</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
 
                 {req.items.map((item, i) => (
                   <View
@@ -447,11 +675,24 @@ const Checkout = () => {
                   </View>
                 ))}
 
-                <View style={styles.subtotalRow}>
-                  <Text style={styles.subtotalLabel}>Subtotal</Text>
-                  <Text style={styles.subtotalValue}>
-                    {formatPrice(subtotalOf(req))}
-                  </Text>
+                {/* Subtotal = items + this pharmacy's delivery cost */}
+                <View style={styles.summary}>
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>Items</Text>
+                    <Text style={styles.summaryValue}>
+                      {formatPrice(itemsTotal)}
+                    </Text>
+                  </View>
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>Delivery</Text>
+                    <Text style={styles.summaryValue}>{deliveryLabel}</Text>
+                  </View>
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.subtotalLabel}>Subtotal</Text>
+                    <Text style={styles.subtotalValue}>
+                      {formatPrice(itemsTotal + delivery)}
+                    </Text>
+                  </View>
                 </View>
 
                 <View style={styles.formBlock}>
@@ -549,13 +790,13 @@ const Checkout = () => {
           <View style={styles.footerTotal}>
             <Text style={styles.footerTotalLabel}>Total</Text>
             <Text style={styles.footerTotalValue}>
-              {formatPrice(grandTotal)}
+              {pharmsReady ? formatPrice(grandTotal) : '—'}
             </Text>
           </View>
           <Button
             label={submitting ? 'Placing order…' : 'Place order'}
             onPress={handlePlaceOrder}
-            disabled={submitting}
+            disabled={submitting || !pharmsReady}
             style={styles.footerButton}
           />
         </View>
